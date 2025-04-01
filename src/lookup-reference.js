@@ -1,5 +1,3 @@
-import jStat from 'jstat'
-
 import * as error from './utils/error.js'
 import * as utils from './utils/common.js'
 import * as advance from './advance.js'
@@ -7,6 +5,11 @@ import * as evalExpression from './utils/criteria-eval.js'
 
 const approximateBinarySearch = (lookupValue, lookupArray) => {
   const valueType = typeof lookupValue
+
+  if (valueType === 'string') {
+    lookupValue = lookupValue.toLowerCase()
+  }
+
   let highestValidValue = null
 
   let start = 0
@@ -20,22 +23,23 @@ const approximateBinarySearch = (lookupValue, lookupArray) => {
     }
 
     if (middle > end) {
-      middle--
+      end = start + Math.trunc((end - start) / 2) - 1
 
-      while (middle >= start && valueType !== typeof lookupArray[middle]) {
-        middle--
-      }
+      continue
     }
 
     if (middle < start) {
       break
     }
 
-    if (lookupValue > lookupArray[middle]) {
+    const comparisonValue =
+      typeof lookupArray[middle] === 'string' ? lookupArray[middle].toLowerCase() : lookupArray[middle]
+
+    if (lookupValue > comparisonValue) {
       highestValidValue = middle
 
       start = middle + 1
-    } else if (lookupValue < lookupArray[middle]) {
+    } else if (lookupValue < comparisonValue) {
       end = middle - 1
     } else {
       return middle
@@ -331,51 +335,69 @@ export function MATCH(lookup_value, lookup_array, match_type = 1) {
     return error.value
   }
 
-  const valueType = typeof lookup_value
+  if (lookup_value === null) {
+    lookup_value = 0
+  }
 
   if (match_type > 0) {
     const result = approximateBinarySearch(lookup_value, lookup_array)
-    if (result !== null) {
-      return result + 1
+
+    return result !== null ? result + 1 : error.na
+  }
+
+  if (match_type === 0) {
+    const length = lookup_array.length
+
+    if (typeof lookup_value !== 'string') {
+      for (let index = 0; index < length; index++) {
+        if (lookup_array[index] === lookup_value) {
+          return index + 1
+        }
+      }
+    } else {
+      const lowerCaseLookupValue = lookup_value.toLowerCase()
+
+      for (let index = 0; index < length; index++) {
+        if (
+          typeof lookup_array[index] === 'string' &&
+          evalExpression.stringCompare(lookup_array[index].toLowerCase(), lowerCaseLookupValue)
+        ) {
+          return index + 1
+        }
+      }
     }
+
     return error.na
-  } else if (match_type === 0) {
-    const tokenizedCriteria = evalExpression.parse(lookup_value + '')
+  }
 
-    const result = lookup_array.findIndex((item) => {
-      const tokens = [evalExpression.createToken(item, evalExpression.TOKEN_TYPE_LITERAL)].concat(tokenizedCriteria)
+  const valueType = typeof lookup_value
 
-      return evalExpression.countIfComputeExpression(tokens)
-    })
-
-    return result >= 0 ? result + 1 : error.na
+  if (valueType === 'string') {
+    lookup_value = lookup_value.toLowerCase()
   }
 
   let lowestValidValue = null
-  for (let i = 0; i < lookup_array.length; i++) {
+
+  const arrayLength = lookup_array.length
+  for (let i = 0; i < arrayLength; i++) {
     if (valueType !== typeof lookup_array[i]) {
       continue
     }
-    if (lookup_value > lookup_array[i]) {
+
+    const comparisonValue = valueType === 'string' ? lookup_array[i].toLowerCase() : lookup_array[i]
+
+    if (lookup_value > comparisonValue) {
       break
     }
 
-    if (lookup_value < lookup_array[i]) {
+    if (lookup_value < comparisonValue) {
       lowestValidValue = i
     } else {
       return i + 1
     }
   }
 
-  if (lowestValidValue !== null) {
-    while (lowestValidValue >= 0 && lookup_array[lowestValidValue] instanceof Error) {
-      lowestValidValue--
-    }
-
-    return lowestValidValue >= 0 ? lowestValidValue + 1 : error.na
-  }
-
-  return error.na
+  return lowestValidValue !== null ? lowestValidValue + 1 : error.na
 }
 
 /**
@@ -552,7 +574,224 @@ export function TRANSPOSE(array) {
     return array
   }
 
-  return jStat.transpose(array)
+  const result = []
+
+  const arrayLength = array.length
+  const rowLength = array[0].length
+
+  for (let x = 0; x < rowLength; x++) {
+    result.push([])
+  }
+
+  for (let y = 0; y < arrayLength; y++) {
+    const row = array[y]
+
+    for (let x = 0; x < rowLength; x++) {
+      const item = row[x]
+
+      result[x].push(item)
+    }
+  }
+
+  return result
+}
+
+const rowExistInArray = (targetRow, array) => {
+  const numOfRows = array.length
+  const numOfColumns = array[0].length
+
+  let columnIndex
+
+  for (let rowIndex = 0; rowIndex < numOfRows; rowIndex++) {
+    const row = array[rowIndex]
+
+    for (columnIndex = 0; columnIndex < numOfColumns; columnIndex++) {
+      if (row[columnIndex] !== targetRow[columnIndex]) {
+        break
+      }
+    }
+
+    if (columnIndex === numOfColumns) {
+      return true
+    }
+  }
+
+  return false
+}
+
+const getArrayWithoutDuplicateRows = (array) => {
+  const uniqueRows = [array[0]]
+
+  const numOfRows = array.length
+  for (let rowIndex = 1; rowIndex < numOfRows; rowIndex++) {
+    const row = array[rowIndex]
+
+    if (!rowExistInArray(row, uniqueRows)) {
+      uniqueRows.push(row)
+    }
+  }
+
+  return uniqueRows
+}
+
+const compareRows = (row1, row2) => {
+  const numOfColumns = row1.length
+
+  for (let columnIndex = 0; columnIndex < numOfColumns; columnIndex++) {
+    if (row1[columnIndex] !== row2[columnIndex]) {
+      return false
+    }
+  }
+
+  return true
+}
+
+const filterNonDuplicateRows = (array) => {
+  const result = []
+
+  const numOfRows = array.length
+
+  let rowIndex
+
+  for (let targetRowIndex = 0; targetRowIndex < numOfRows; targetRowIndex++) {
+    const targetRow = array[targetRowIndex]
+
+    for (rowIndex = 0; rowIndex < numOfRows; rowIndex++) {
+      if (targetRowIndex === rowIndex) {
+        continue
+      }
+
+      if (compareRows(targetRow, array[rowIndex])) {
+        break
+      }
+    }
+
+    if (rowIndex === numOfRows) {
+      result.push(targetRow)
+    }
+  }
+
+  return result
+}
+
+const columnExistInArray = (baseArray, baseColumnIndex, targetArray) => {
+  const numOfRows = targetArray.length
+  const numOfColumns = targetArray[0].length
+
+  let rowIndex
+
+  for (let columnIndex = 0; columnIndex < numOfColumns; columnIndex++) {
+    for (rowIndex = 0; rowIndex < numOfRows; rowIndex++) {
+      if (baseArray[rowIndex][baseColumnIndex] !== targetArray[rowIndex][columnIndex]) {
+        break
+      }
+    }
+
+    if (rowIndex === numOfRows) {
+      return true
+    }
+  }
+
+  return false
+}
+
+const compareColumns = (array1, columnIndex1, array2, columnIndex2) => {
+  const numOfRows = array1.length
+
+  for (let rowIndex = 0; rowIndex < numOfRows; rowIndex++) {
+    if (array1[rowIndex][columnIndex1] !== array2[rowIndex][columnIndex2]) {
+      return false
+    }
+  }
+
+  return true
+}
+
+const copyColumn = (baseArray, targetArray, columnIndex) => {
+  const numOfRows = baseArray.length
+
+  for (let rowIndex = 0; rowIndex < numOfRows; rowIndex++) {
+    if (!targetArray[rowIndex]) {
+      targetArray.push([])
+    }
+
+    targetArray[rowIndex].push(baseArray[rowIndex][columnIndex])
+  }
+}
+
+const getArrayWithoutDuplicateColumns = (array) => {
+  const uniqueColumns = []
+  copyColumn(array, uniqueColumns, 0)
+
+  const numOfColumns = array[0].length
+  for (let columnIndex = 1; columnIndex < numOfColumns; columnIndex++) {
+    if (!columnExistInArray(array, columnIndex, uniqueColumns)) {
+      copyColumn(array, uniqueColumns, columnIndex)
+    }
+  }
+
+  return uniqueColumns
+}
+
+const filterNonDuplicateColumns = (array) => {
+  const result = []
+
+  let columnIndex
+
+  const numOfColumns = array[0].length
+
+  for (let targetColumnIndex = 0; targetColumnIndex < numOfColumns; targetColumnIndex++) {
+    for (columnIndex = 0; columnIndex < numOfColumns; columnIndex++) {
+      if (targetColumnIndex === columnIndex) {
+        continue
+      }
+
+      if (compareColumns(array, targetColumnIndex, array, columnIndex)) {
+        break
+      }
+    }
+
+    if (columnIndex === numOfColumns) {
+      copyColumn(array, result, targetColumnIndex)
+    }
+  }
+
+  return result
+}
+
+const copy = function (obj) {
+  if (typeof obj !== 'object' || obj === null) {
+    return obj
+  }
+
+  if (Array.isArray(obj)) {
+    const numOfItems = obj.length
+
+    const result = []
+
+    for (let i = 0; i < numOfItems; i++) {
+      result.push(copy(obj[i]))
+    }
+
+    return result
+  }
+
+  if (obj instanceof Error) {
+    return obj
+  }
+
+  const entries = Object.entries(obj)
+  const entriesLength = entries.length
+
+  const result = {}
+
+  for (let i = 0; i < entriesLength; i++) {
+    const [key, value] = entries[i]
+
+    result[key] = copy(value)
+  }
+
+  return result
 }
 
 /**
@@ -562,30 +801,63 @@ export function TRANSPOSE(array) {
  *
  * @returns
  */
-export function UNIQUE() {
-  const result = []
+export function UNIQUE(array, by_col, exactly_once) {
+  if (arguments.length === 0 || arguments.length > 3) {
+    return error.na
+  }
 
-  for (let i = 0; i < arguments.length; ++i) {
-    let hasElement = false
-    const element = arguments[i]
+  if (typeof array === 'undefined') {
+    return 0
+  }
 
-    // Check if we've already seen this element.
+  if (!Array.isArray(array)) {
+    array = [[array]]
+  }
 
-    for (let j = 0; j < result.length; ++j) {
-      hasElement = result[j] === element
+  if (typeof by_col === 'undefined') {
+    by_col = false
+  } else {
+    by_col = utils.parseBool(by_col)
 
-      if (hasElement) {
-        break
-      }
-    }
-
-    // If we did not find it, add it to the result.
-    if (!hasElement) {
-      result.push(element)
+    if (typeof by_col !== 'boolean') {
+      return by_col
     }
   }
 
-  return result
+  if (typeof exactly_once === 'undefined') {
+    exactly_once = false
+  } else {
+    exactly_once = utils.parseBool(exactly_once)
+
+    if (typeof exactly_once !== 'boolean') {
+      return exactly_once
+    }
+  }
+
+  let filterFunction = by_col
+    ? exactly_once
+      ? filterNonDuplicateColumns
+      : getArrayWithoutDuplicateColumns
+    : exactly_once
+    ? filterNonDuplicateRows
+    : getArrayWithoutDuplicateRows
+
+  const result = copy(filterFunction(array))
+
+  const numOfRows = result.length
+  const numOfColumns = result[0].length
+
+  for (let rowIndex = 0; rowIndex < numOfRows; rowIndex++) {
+    const row = result[rowIndex]
+
+    for (let columnIndex = 0; columnIndex < numOfColumns; columnIndex++) {
+      if (row[columnIndex] === null) {
+        row[columnIndex] = 0
+      }
+    }
+  }
+
+  return numOfRows === 1 && numOfColumns === 1 ? result[0][0] : result
 }
 
 /**
@@ -604,7 +876,52 @@ export function VLOOKUP(lookup_value, table_array, col_index_num, range_lookup =
     return error.na
   }
 
-  if (!table_array) {
+  if (lookup_value instanceof Error) {
+    return lookup_value
+  }
+
+  if (col_index_num instanceof Error) {
+    return col_index_num
+  }
+
+  if (range_lookup instanceof Error) {
+    return range_lookup
+  }
+
+  if (!Array.isArray(table_array)) {
+    table_array = [[table_array]]
+  }
+
+  range_lookup = utils.parseBool(range_lookup)
+  if (typeof range_lookup !== 'boolean') {
+    return error.value
+  }
+
+  const numOfRows = table_array.length
+
+  let resultRow
+
+  if (range_lookup) {
+    const firstColumn = []
+
+    for (let y = 0; y < numOfRows; y++) {
+      firstColumn.push(table_array[y][0])
+    }
+
+    const rowIndex = approximateBinarySearch(lookup_value, firstColumn)
+
+    if (rowIndex !== null) {
+      resultRow = table_array[rowIndex]
+    }
+  } else {
+    for (let y = 0; y < numOfRows; y++) {
+      if (table_array[y][0] === lookup_value) {
+        resultRow = table_array[y]
+      }
+    }
+  }
+
+  if (typeof resultRow === 'undefined') {
     return error.na
   }
 
@@ -617,71 +934,170 @@ export function VLOOKUP(lookup_value, table_array, col_index_num, range_lookup =
     return error.ref
   }
 
-  if (range_lookup instanceof Error) {
-    return range_lookup
-  }
-
-  range_lookup = utils.parseBool(range_lookup)
-  if (typeof range_lookup !== 'boolean') {
-    return error.value
-  }
-
-  if (range_lookup) {
-    const rowIndex = approximateBinarySearch(lookup_value, utils.flatten(table_array.map((row) => row[0])))
-
-    if (rowIndex === null) {
-      return error.na
-    }
-
-    return table_array[rowIndex][col_index_num - 1]
-  }
-
-  for (let i = 0; i < table_array.length; i++) {
-    if (table_array[i][0] === lookup_value) {
-      return table_array[i][col_index_num - 1]
-    }
-  }
-
-  return error.na
+  return resultRow[col_index_num - 1]
 }
 
-function xLookupBinarySearch(arr, target, match_mode) {
+const typePrecedenceMap = {
+  number: 0,
+  string: 1,
+  boolean: 2
+}
+
+const getTypePrecedence = function (value) {
+  const type = typeof value
+
+  if (typeof typePrecedenceMap[type] !== 'undefined') {
+    return typePrecedenceMap[type]
+  }
+
+  return value === null ? 4 : 3
+}
+
+const compare = function (value1, value2) {
+  const typePrecedence1 = getTypePrecedence(value1)
+  const typePrecedence2 = getTypePrecedence(value2)
+
+  if (typePrecedence1 !== typePrecedence2) {
+    return typePrecedence1 < typePrecedence2 ? -1 : 1
+  }
+
+  if (typeof value2 === 'string') {
+    value2 = value2.toLowerCase()
+  }
+
+  if (value1 === value2) {
+    return 0
+  }
+
+  return value1 < value2 ? -1 : 1
+}
+
+function xLookupBinarySearch(target, arr, match_mode) {
   let left = 0
   let right = arr.length - 1
 
+  const targetIsString = typeof target === 'string'
+
+  if (targetIsString) {
+    target = target.toLowerCase()
+  }
+
   while (left <= right) {
-    const mid = Math.floor((left + right) / 2)
+    let mid = Math.floor((left + right) / 2)
 
-    if (match_mode === 2) {
-      const tokenizedCriteria = evalExpression.parse(target + '')
-      let tokens = [evalExpression.createToken(arr[mid], evalExpression.TOKEN_TYPE_LITERAL)].concat(tokenizedCriteria)
+    const comparisonResult = compare(target, arr[mid])
 
-      if (evalExpression.countIfComputeExpression(tokens)) {
-        // Element found
-        return mid
-      } else if (arr[mid] < target) {
-        // Continue search to the right half of the array
-        left = mid + 1
-      } else {
-        // Continue search to the left half of the array
-        right = mid - 1
+    if (comparisonResult === 0) {
+      while (mid > 0 && compare(target, arr[mid - 1]) === 0) {
+        mid--
       }
+
+      return mid
+    }
+
+    let changeLeft = comparisonResult > 0
+
+    if (changeLeft) {
+      // Continue search to the right half of the array
+      left = mid + 1
     } else {
-      if (arr[mid] === target) {
-        // Element found
-        return mid
-      } else if (arr[mid] < target) {
-        // Continue search to the right half of the array
-        left = mid + 1
-      } else {
-        // Continue search to the left half of the array
-        right = mid - 1
-      }
+      // Continue search to the left half of the array
+      right = mid - 1
     }
   }
 
-  // Element not found
-  return -1
+  if (match_mode === 0) {
+    return null
+  }
+
+  if (match_mode === -1) {
+    if (right < 0) {
+      return null
+    }
+
+    const comparisonResult = compare(target, arr[right])
+
+    if (comparisonResult > 0) {
+      return right
+    }
+
+    return right > 0 ? right - 1 : null
+  }
+
+  if (left >= arr.length) {
+    return null
+  }
+
+  const comparisonResult = compare(target, arr[left])
+
+  if (comparisonResult < 0) {
+    return left
+  }
+
+  return left < arr.length - 1 ? left + 1 : null
+}
+
+function invertedXLookupBinarySearch(target, arr, match_mode) {
+  let left = 0
+  let right = arr.length - 1
+
+  if (typeof target === 'string') {
+    target = target.toLowerCase()
+  }
+
+  while (left <= right) {
+    let mid = Math.floor((left + right) / 2)
+
+    const comparisonResult = compare(target, arr[mid])
+
+    if (comparisonResult === 0) {
+      while (mid < arr.length - 1 && compare(target, arr[mid + 1]) === 0) {
+        mid++
+      }
+
+      return mid
+    }
+
+    let changeLeft = comparisonResult < 0
+
+    if (changeLeft) {
+      // Continue search to the right half of the array
+      left = mid + 1
+    } else {
+      // Continue search to the left half of the array
+      right = mid - 1
+    }
+  }
+
+  if (match_mode === 0) {
+    return null
+  }
+
+  if (match_mode === -1) {
+    if (left >= arr.length) {
+      return null
+    }
+
+    const comparisonResult = compare(target, arr[left])
+
+    if (comparisonResult > 0) {
+      return left
+    }
+
+    return left > 0 ? left - 1 : null
+  }
+
+  if (right < 0) {
+    return null
+  }
+
+  const comparisonResult = compare(target, arr[right])
+
+  if (comparisonResult < 0) {
+    return right
+  }
+
+  return right < arr.length - 1 ? right + 1 : null
 }
 
 // Searches the index of a given value. Works with XLOOKUP arguments: match_mode and search_mode
@@ -692,68 +1108,84 @@ function lookupIndex(value, lookup_array, match_mode, reverse) {
   const endIndex = reverse ? -1 : arrLength
   const step = reverse ? -1 : 1
 
+  if (typeof value === 'string') {
+    value = value.toLowerCase()
+  }
+
   if (match_mode === 0) {
     for (let i = startIndex; i !== endIndex; i += step) {
-      if (lookup_array[i] === value) {
+      if (compare(value, lookup_array[i]) === 0) {
         return i
       }
     }
   } else if (match_mode === -1) {
-    let closest_smaller = -Infinity
+    let closest_smaller = undefined
     let closest_smaller_pos = false
 
     for (let i = startIndex; i !== endIndex; i += step) {
       let current = lookup_array[i]
 
-      if (current === value) {
+      const comparisonResult = compare(value, current)
+
+      if (comparisonResult === 0) {
         return i
       }
-      if (current < value && current > closest_smaller) {
-        closest_smaller = current
+
+      if (comparisonResult > 0 && (typeof closest_smaller === 'undefined' || compare(closest_smaller, current) < 0)) {
+        closest_smaller = typeof current === 'string' ? current.toLowerCase() : current
         closest_smaller_pos = i
       }
     }
 
     return closest_smaller_pos
   } else if (match_mode === 1) {
-    let closest_larger = +Infinity
+    let closest_larger = undefined
     let closest_larger_pos = false
 
     for (let i = startIndex; i !== endIndex; i += step) {
       let current = lookup_array[i]
 
-      if (current === value) {
+      const comparisonResult = compare(value, current)
+
+      if (comparisonResult === 0) {
         return i
       }
-      if (current > value && current < closest_larger) {
-        closest_larger = current
+
+      if (comparisonResult < 0 && (typeof closest_larger === 'undefined' || compare(closest_larger, current) > 0)) {
+        closest_larger = typeof current === 'string' ? current.toLowerCase() : current
         closest_larger_pos = i
       }
     }
 
     return closest_larger_pos
   } else if (match_mode === 2) {
-    const tokenizedCriteria = evalExpression.parse(value + '')
+    if (typeof value !== 'string') {
+      for (let i = startIndex; i !== endIndex; i += step) {
+        if (lookup_array[i] === value) {
+          return i
+        }
+      }
+    } else {
+      const lowerCaseLookupValue = value.toLowerCase()
 
-    for (let i = startIndex; i !== endIndex; i += step) {
-      let tokens = [evalExpression.createToken(lookup_array[i], evalExpression.TOKEN_TYPE_LITERAL)].concat(
-        tokenizedCriteria
-      )
-
-      if (evalExpression.countIfComputeExpression(tokens)) {
-        return i
+      for (let i = startIndex; i !== endIndex; i += step) {
+        if (
+          typeof lookup_array[i] === 'string' &&
+          evalExpression.stringCompare(lookup_array[i].toLowerCase(), lowerCaseLookupValue)
+        ) {
+          return i
+        }
       }
     }
   }
 }
 
-function getVal(p, return_array, if_not_found, lookup_type) {
-  if (typeof p !== 'number') {
-    return if_not_found
-  } else if (lookup_type === 'line') {
-    return return_array[0][p]
-  } else if (lookup_type === 'column') {
-    return return_array[p][0]
+const xLookupSearchFunctions = {
+  2: xLookupBinarySearch,
+  '-2': invertedXLookupBinarySearch,
+  1: lookupIndex,
+  '-1': function () {
+    return lookupIndex.call(this, ...arguments, true)
   }
 }
 
@@ -770,14 +1202,7 @@ function getVal(p, return_array, if_not_found, lookup_type) {
  * @param {*} search_mode Optional. Specify the search mode to use: 1 - Perform a search starting at the first item. This is the default. -1 - Perform a reverse search starting at the last item. 2 - Perform a binary search that relies on lookup_array being sorted in ascending order. If not sorted, invalid results will be returned. -2 - Perform a binary search that relies on lookup_array being sorted in descending order. If not sorted, invalid results will be returned.
  * @returns
  */
-export function XLOOKUP(
-  lookup_value,
-  lookup_array,
-  return_array,
-  if_not_found = error.na,
-  match_mode = 0,
-  search_mode = 1
-) {
+export function XLOOKUP(lookup_value, lookup_array, return_array, if_not_found, match_mode = 0, search_mode = 1) {
   if (arguments.length > 6 || arguments.length < 3 || utils.anyIsUndefined(lookup_value, lookup_array, return_array)) {
     return error.na
   }
@@ -793,71 +1218,109 @@ export function XLOOKUP(
 
   if (
     utils.anyIsError(match_mode, search_mode) ||
-    utils.getVariableType(lookup_array) === 'single' ||
-    utils.getVariableType(return_array) === 'single' ||
     ![-1, 0, 1, 2].includes(match_mode) ||
-    ![-2, -1, 1, 2].includes(search_mode) ||
-    lookup_value === null
+    ![-2, -1, 1, 2].includes(search_mode)
   ) {
     return error.value
   }
 
-  const type = utils.getVariableType(lookup_value)
-  const flattened = utils.flatten(lookup_array)
+  if (match_mode === 2 && (search_mode === 2 || search_mode === -2)) {
+    return error.value
+  }
 
-  if (type === 'single') {
-    let p
-    if (search_mode === 2) {
-      p = xLookupBinarySearch(flattened, lookup_value, match_mode)
-    } else if (search_mode === -2) {
-      p = flattened.length - xLookupBinarySearch(flattened.reverse(), lookup_value, match_mode) - 1
-    } else {
-      p = lookupIndex(lookup_value, flattened, match_mode, search_mode === -1)
+  const lookup_arrayType = utils.getVariableType(lookup_array)
+  if (lookup_arrayType === 'matrix') {
+    return error.value
+  }
+
+  let flattened
+  if (lookup_arrayType === 'single') {
+    flattened = [lookup_array]
+  } else {
+    if (!Array.isArray(return_array)) {
+      return error.value
     }
 
+    if (lookup_arrayType === 'line') {
+      if (return_array[0].length !== lookup_array[0].length) {
+        return error.value
+      }
+    } else {
+      if (return_array.length !== lookup_array.length) {
+        return error.value
+      }
+    }
+
+    flattened = utils.flatten(lookup_array)
+  }
+
+  const type = utils.getVariableType(lookup_value)
+
+  const searchFunction = xLookupSearchFunctions[search_mode]
+
+  if (type === 'single') {
+    const p = searchFunction(lookup_value, flattened, match_mode)
+
     if (typeof p !== 'number') {
-      return [[if_not_found]]
+      return typeof if_not_found !== 'undefined' ? if_not_found : error.na
+    }
+
+    if (lookup_arrayType === 'single') {
+      if (Array.isArray(return_array) && return_array.length > 1 && return_array[0].length > 1) {
+        return error.value
+      }
+
+      return return_array
     }
 
     if (utils.getVariableType(lookup_array) === 'line') {
-      return utils.getColumnAsMatrix(return_array, p)
+      const result = utils.getColumnAsMatrix(return_array, p)
+
+      return result.length === 1 ? result[0][0] : result
     }
 
-    return [return_array[p]]
+    return return_array[p].length === 1 ? return_array[p][0] : [return_array[p]]
   }
 
-  let value_rows = lookup_value.length
-  let value_columns = lookup_value[0].length
-  let result = []
-  const lookup_type = utils.getVariableType(lookup_array)
+  const value_rows = lookup_value.length
+  const value_columns = lookup_value[0].length
+  const result = []
 
   // Iterate through each value when lookup_value is a range
-  if (search_mode === 2) {
-    for (let i = 0; i < value_rows; i++) {
-      result[i] = []
-      for (let j = 0; j < value_columns; j++) {
-        let p = xLookupBinarySearch(flattened, lookup_value[i][j], match_mode)
-        result[i][j] = getVal(p, return_array, if_not_found, lookup_type)
-      }
-    }
-  } else if (search_mode === -2) {
-    let flattenedLength = flattened.length
-    let flattenedReverse = flattened.reverse()
+  for (let i = 0; i < value_rows; i++) {
+    const resultRow = []
+    result.push(resultRow)
 
-    for (let i = 0; i < value_rows; i++) {
-      result[i] = []
-      for (let j = 0; j < value_columns; j++) {
-        let p = flattenedLength - xLookupBinarySearch(flattenedReverse, lookup_value[i][j], match_mode) - 1
-        result[i][j] = getVal(p, return_array, if_not_found, lookup_type)
+    for (let j = 0; j < value_columns; j++) {
+      if (lookup_arrayType === 'single') {
+        if (Array.isArray(return_array) && return_array.length > 1 && return_array[0].length > 1) {
+          resultRow.push(error.value)
+
+          continue
+        }
       }
-    }
-  } else {
-    for (let i = 0; i < value_rows; i++) {
-      result[i] = []
-      for (let j = 0; j < value_columns; j++) {
-        let p = lookupIndex(lookup_value[i][j], flattened, match_mode, search_mode === -1)
-        result[i][j] = getVal(p, return_array, if_not_found, lookup_type)
+
+      const p = searchFunction(lookup_value[i][j], flattened, match_mode)
+
+      let resultItem
+
+      if (typeof p !== 'number') {
+        if (typeof if_not_found === 'undefined') {
+          resultItem = error.na
+        } else {
+          resultItem = Array.isArray(if_not_found) ? if_not_found[0][0] : if_not_found
+        }
+      } else {
+        if (lookup_arrayType === 'line') {
+          resultItem = return_array[0][p]
+        } else if (lookup_arrayType === 'column') {
+          resultItem = return_array[p][0]
+        } else {
+          resultItem = Array.isArray(return_array) ? return_array[0][0] : return_array
+        }
       }
+
+      resultRow.push(resultItem)
     }
   }
 
@@ -1141,14 +1604,6 @@ export function ADDRESS(row, column, absoluteNum = 1, a1Style = true, sheetName)
     return result + a1Absolute[absoluteNum](row, columnsLetter)
   }
   return result + r1c1Absolute[absoluteNum](row, column)
-}
-
-export function AREAS() {
-  throw new Error('AREAS is not implemented')
-}
-
-export function FORMULATEXT() {
-  throw new Error('FORMULATEXT is not implemented')
 }
 
 export function GETPIVOTDATA() {

@@ -3,7 +3,6 @@ import jStat from 'jstat'
 import * as error from './utils/error.js'
 import * as evalExpression from './utils/criteria-eval.js'
 import * as mathTrig from './math-trig.js'
-import * as lookup from './lookup-reference.js'
 import * as utils from './utils/common.js'
 
 const SQRT2PI = 2.5066282746310002
@@ -31,52 +30,6 @@ export function AVEDEV() {
   }
 
   return jStat.sum(jStat(range).subtract(jStat.mean(range)).abs()[0]) / range.length
-}
-
-/**
- * Returns the average of its arguments.
- *
- * Category: Statistical
- *
- * @param {*} args number1, number2, ...Numbers, value references or ranges for which you want the average.
- * @returns
- */
-export function AVERAGE() {
-  if (arguments.length === 0) {
-    return error.na
-  }
-
-  const flatArguments = utils.flatten(arguments)
-
-  let sum = 0
-  let count = 0
-
-  const flatArgumentsLength = flatArguments.length
-
-  for (let i = 0; i < flatArgumentsLength; i++) {
-    const element = flatArguments[i]
-
-    if (element instanceof Error) {
-      return element
-    }
-
-    let number
-
-    const typeOfElement = typeof element
-
-    if (typeOfElement === 'undefined') {
-      number = 0
-    } else if (typeOfElement === 'number') {
-      number = element
-    } else {
-      continue
-    }
-
-    sum += number
-    count++
-  }
-
-  return count === 0 ? error.div0 : sum / count
 }
 
 /**
@@ -143,63 +96,80 @@ export function AVERAGEA() {
  * @returns
  */
 export function AVERAGEIF(range, criteria, average_range) {
-  if (arguments.length < 2 || arguments.length > 3) {
+  if (
+    arguments.length < 2 ||
+    arguments.length > 3 ||
+    typeof range === 'undefined' ||
+    (arguments.length === 3 && typeof average_range === 'undefined')
+  ) {
     return error.na
   }
 
   if (!Array.isArray(range)) {
-    range = [range]
+    range = [[range]]
   }
 
-  if (!Array.isArray(range[0])) {
-    range[0] = [range[0]]
-  }
+  const numOfRows = range.length
+  const numOfColumns = range[0].length
 
-  if (average_range !== undefined) {
+  if (typeof average_range !== 'undefined') {
     if (!Array.isArray(average_range)) {
-      average_range = [average_range]
+      average_range = [[average_range]]
     }
 
-    if (!Array.isArray(average_range[0])) {
-      average_range[0] = [average_range[0]]
-    }
-
-    if (range.length !== average_range.length || range[0].length !== average_range[0].length) {
+    if (numOfRows !== average_range.length || numOfColumns !== average_range[0].length) {
       return error.value
     }
+  } else {
+    average_range = range
   }
 
-  average_range = average_range || range
-  const flatAverageRange = utils.flatten(average_range)
-  const flatAverageRangeDefined = flatAverageRange.filter(utils.isDefined)
-  average_range = flatAverageRangeDefined
+  let isSingleCriteria = false
 
-  range = utils.flatten(range)
+  if (!Array.isArray(criteria)) {
+    criteria = [[criteria]]
+    isSingleCriteria = true
+  }
 
-  let average_count = 0
-  let result = 0
-  const tokenizedCriteria = evalExpression.parse(criteria + '')
+  const result = []
 
-  for (let i = 0; i < range.length; i++) {
-    if (typeof average_range[i] !== 'number') {
-      continue
+  const numOfCriteriaRows = criteria.length
+  const numOfCriteriaColumns = criteria[0].length
+
+  const executionResultLength = numOfRows * numOfColumns
+
+  for (let y = 0; y < numOfCriteriaRows; y++) {
+    const row = criteria[y]
+
+    const resultRow = []
+    result.push(resultRow)
+
+    for (let x = 0; x < numOfCriteriaColumns; x++) {
+      const singleCriteria = row[x]
+
+      const executionResult = evalExpression.runCriterias(range, singleCriteria)
+
+      let sum = 0
+      let counter = 0
+
+      for (let i = 0; i < executionResultLength; i++) {
+        if (executionResult[i]) {
+          const value = average_range[Math.trunc(i / numOfColumns)][i % numOfColumns]
+
+          if (typeof value === 'number') {
+            sum += value
+            counter++
+          } else if (value instanceof Error) {
+            return value
+          }
+        }
+      }
+
+      resultRow.push(counter !== 0 ? sum / counter : error.div0)
     }
-
-    const value = range[i]
-
-    const tokens = [evalExpression.createToken(value, evalExpression.TOKEN_TYPE_LITERAL)].concat(tokenizedCriteria)
-
-    if (evalExpression.countIfComputeExpression(tokens)) {
-      result += average_range[i]
-      average_count++
-    }
   }
 
-  if (!average_count) {
-    return error.div0
-  }
-
-  return result / average_count
+  return isSingleCriteria ? result[0][0] : result
 }
 
 /**
@@ -210,87 +180,59 @@ export function AVERAGEIF(range, criteria, average_range) {
  * @param {*} args One or more values to average, including numbers or names, arrays, or references that contain numbers.
  * @returns
  */
-export function AVERAGEIFS() {
-  if (arguments.length < 3 || arguments.length % 2 === 0) {
+export function AVERAGEIFS(average_range, ...criteria) {
+  if (arguments.length < 3 || arguments.length % 2 === 0 || typeof average_range === 'undefined') {
     return error.na
   }
 
-  if (!Array.isArray(arguments[0])) {
-    arguments[0] = [arguments[0]]
+  if (!Array.isArray(average_range)) {
+    average_range = [[average_range]]
   }
 
-  if (!Array.isArray(arguments[0][0])) {
-    arguments[0][0] = [arguments[0][0]]
-  }
+  const numOfRows = average_range.length
+  const numOfColumns = average_range[0].length
 
-  const height = arguments[0].length
-  const width = arguments[0][0].length
+  const criteriaLength = criteria.length
 
-  const args = utils.argsToArray(arguments)
-  const criteriaLength = (args.length - 1) / 2
-  const range = utils.flatten(args.shift())
-  let count = 0
-  let result = 0
-
-  for (let i = 0; i < args.length; i += 2) {
-    if (!Array.isArray(args[i])) {
-      args[i] = [args[i]]
+  for (let i = 0; i < criteriaLength; i += 2) {
+    if (typeof criteria[i] === 'undefined') {
+      return error.na
     }
 
-    if (!Array.isArray(args[i][0])) {
-      args[i][0] = [args[i][0]]
-    }
-
-    if (height !== args[i].length || width !== args[i][0].length) {
+    if (Array.isArray(criteria[i + 1])) {
       return error.value
     }
 
-    args[i] = utils.flatten(args[i])
-  }
-
-  for (let i = 0; i < range.length; i++) {
-    if (typeof range[i] !== 'number') {
-      continue
+    if (!Array.isArray(criteria[i])) {
+      criteria[i] = [[criteria[i]]]
     }
 
-    let isMeetCondition = false
+    if (numOfRows !== criteria[i].length || numOfColumns !== criteria[i][0].length) {
+      return error.value
+    }
+  }
 
-    for (let j = 0; j < criteriaLength; j++) {
-      const value = args[2 * j][i]
-      const criteria = args[2 * j + 1]
-      let computedResult = false
+  const resultsLength = numOfRows * numOfColumns
 
-      const tokenizedCriteria = evalExpression.parse(criteria + '')
-      const tokens = [evalExpression.createToken(value, evalExpression.TOKEN_TYPE_LITERAL)].concat(tokenizedCriteria)
+  const results = evalExpression.runCriterias(...criteria)
 
-      computedResult = evalExpression.countIfComputeExpression(tokens)
+  let sum = 0
+  let counter = 0
 
-      // Criterias are calculated as AND so any `false` breakes the loop as unmeet condition
-      if (!computedResult) {
-        isMeetCondition = false
-        break
+  for (let i = 0; i < resultsLength; i++) {
+    if (results[i]) {
+      const value = average_range[Math.trunc(i / numOfColumns)][i % numOfColumns]
+
+      if (typeof value === 'number') {
+        sum += value
+        counter++
+      } else if (value instanceof Error) {
+        return value
       }
-
-      isMeetCondition = true
-    }
-
-    if (isMeetCondition) {
-      result += range[i]
-      count++
     }
   }
 
-  if (count === 0) {
-    return error.div0
-  }
-
-  const average = result / count
-
-  if (isNaN(average)) {
-    return 0
-  } else {
-    return average
-  }
+  return counter === 0 ? error.div0 : sum / counter
 }
 
 export const BETA = {}
@@ -835,33 +777,55 @@ export function COUNTBLANK() {
  * @returns
  */
 export function COUNTIF(range, criteria) {
-  if (arguments.length !== 2) {
+  if (arguments.length !== 2 || typeof range === 'undefined') {
     return error.na
   }
 
   if (!Array.isArray(range)) {
-    range = [range]
-  } else {
-    range = utils.flatten(range)
+    range = [[range]]
   }
 
-  if (criteria === null) {
-    criteria = 0
+  let isSingleCriteria = false
+
+  if (!Array.isArray(criteria)) {
+    criteria = [[criteria]]
+    isSingleCriteria = true
   }
 
-  let matches = 0
-  const tokenizedCriteria = evalExpression.parse(criteria + '')
+  const result = []
 
-  for (let i = 0; i < range.length; i++) {
-    const value = range[i]
-    const tokens = [evalExpression.createToken(value, evalExpression.TOKEN_TYPE_LITERAL)].concat(tokenizedCriteria)
+  const numOfCriteriaRows = criteria.length
+  const numOfCriteriaColumns = criteria[0].length
 
-    if (evalExpression.countIfComputeExpression(tokens) || value === criteria) {
-      matches++
+  const numOfRangeRows = range.length
+  const numOfRangeColumns = range[0].length
+
+  const executionResultLength = numOfRangeRows * numOfRangeColumns
+
+  for (let y = 0; y < numOfCriteriaRows; y++) {
+    const row = criteria[y]
+
+    const resultRow = []
+    result.push(resultRow)
+
+    for (let x = 0; x < numOfCriteriaColumns; x++) {
+      const singleCriteria = row[x]
+
+      const executionResult = evalExpression.runCriterias(range, singleCriteria)
+
+      let matches = 0
+
+      for (let i = 0; i < executionResultLength; i++) {
+        if (executionResult[i]) {
+          matches++
+        }
+      }
+
+      resultRow.push(matches)
     }
   }
 
-  return matches
+  return isSingleCriteria ? result[0][0] : result
 }
 
 /**
@@ -873,59 +837,39 @@ export function COUNTIF(range, criteria) {
  * @returns
  */
 export function COUNTIFS() {
-  if (arguments.length < 2 || arguments.length % 2 !== 0) {
+  const numOfArguments = arguments.length
+  if (numOfArguments < 2 || numOfArguments % 2 !== 0 || typeof arguments[0] === 'undefined') {
     return error.na
   }
 
   if (!Array.isArray(arguments[0])) {
-    arguments[0] = [arguments[0]]
+    arguments[0] = [[arguments[0]]]
   }
 
-  if (!Array.isArray(arguments[0][0])) {
-    arguments[0][0] = [arguments[0][0]]
-  }
+  const numOfRows = arguments[0].length
+  const numOfColumns = arguments[0][0].length
 
-  const height = arguments[0].length
-  const width = arguments[0][0].length
+  for (let i = 2; i < numOfArguments; i += 2) {
+    if (typeof arguments[i] === 'undefined') {
+      return error.na
+    }
 
-  for (let i = 2; i < arguments.length; i += 2) {
     if (!Array.isArray(arguments[i])) {
-      arguments[i] = [arguments[i]]
+      arguments[i] = [[arguments[i]]]
     }
 
-    if (!Array.isArray(arguments[i][0])) {
-      arguments[i][0] = [arguments[i][0]]
-    }
-
-    if (height !== arguments[i].length || width !== arguments[i][0].length) {
+    if (numOfRows !== arguments[i].length || numOfColumns !== arguments[i][0].length) {
       return error.value
     }
   }
 
-  const args = utils.argsToArray(arguments)
-  const results = new Array(utils.flatten(args[0]).length)
+  const resultsLength = numOfRows * numOfColumns
 
-  for (let i = 0; i < results.length; i++) {
-    results[i] = true
-  }
-
-  for (let i = 0; i < args.length; i += 2) {
-    const range = utils.flatten(args[i])
-    const criteria = args[i + 1]
-
-    const tokenizedCriteria = evalExpression.parse(criteria + '')
-
-    for (let j = 0; j < range.length; j++) {
-      const value = range[j]
-      const tokens = [evalExpression.createToken(value, evalExpression.TOKEN_TYPE_LITERAL)].concat(tokenizedCriteria)
-
-      results[j] = results[j] && evalExpression.countIfComputeExpression(tokens)
-    }
-  }
+  const results = evalExpression.runCriterias(...arguments)
 
   let result = 0
 
-  for (let i = 0; i < results.length; i++) {
+  for (let i = 0; i < resultsLength; i++) {
     if (results[i]) {
       result++
     }
@@ -935,7 +879,56 @@ export function COUNTIFS() {
 }
 
 export function COUNTUNIQUE() {
-  return lookup.UNIQUE.apply(null, utils.flatten(arguments)).length
+  const numOfArguments = arguments.length
+
+  if (numOfArguments === 0) {
+    return error.na
+  }
+
+  const uniqueValues = []
+
+  for (let i = 0; i < numOfArguments; i++) {
+    let arg = arguments[i]
+
+    if (typeof arg === 'undefined') {
+      continue
+    }
+
+    let uniqueValueIndex
+
+    if (!Array.isArray(arg)) {
+      arg = [[arg]]
+    }
+
+    const numOfRows = arg.length
+    const numOfColumns = arg[0].length
+
+    for (let y = 0; y < numOfRows; y++) {
+      const row = arg[y]
+
+      for (let x = 0; x < numOfColumns; x++) {
+        const value = row[x]
+
+        if (value === null) {
+          continue
+        }
+
+        const numOfUniqueValues = uniqueValues.length
+
+        for (uniqueValueIndex = 0; uniqueValueIndex < numOfUniqueValues; uniqueValueIndex++) {
+          if (uniqueValues[uniqueValueIndex] === value) {
+            break
+          }
+        }
+
+        if (uniqueValueIndex === numOfUniqueValues) {
+          uniqueValues.push(value)
+        }
+      }
+    }
+  }
+
+  return uniqueValues.length
 }
 
 export const COVARIANCE = {}
@@ -2083,57 +2076,53 @@ export function MAXA() {
 }
 
 export function MAXIFS(range, ...criteria) {
-  if (arguments.length < 3 || (arguments.length > 3 && arguments.length % 2 === 0)) {
+  if (arguments.length < 3 || arguments.length % 2 === 0 || typeof range === 'undefined') {
     return error.na
   }
 
-  if (utils.getVariableType(range) === 'single') {
-    return error.value
+  if (!Array.isArray(range)) {
+    range = [[range]]
   }
 
+  const numOfRows = range.length
+  const numOfColumns = range[0].length
+
+  const criteriaLength = criteria.length
+
+  for (let i = 0; i < criteriaLength; i += 2) {
+    if (typeof criteria[i] === 'undefined') {
+      return error.na
+    }
+
+    if (Array.isArray(criteria[i + 1])) {
+      return error.value
+    }
+
+    if (!Array.isArray(criteria[i])) {
+      criteria[i] = [[criteria[i]]]
+    }
+
+    if (numOfRows !== criteria[i].length || numOfColumns !== criteria[i][0].length) {
+      return error.value
+    }
+  }
+
+  const resultsLength = numOfRows * numOfColumns
+
+  const results = evalExpression.runCriterias(...criteria)
+
   let max = -Infinity
-  let rows = range.length
-  let columns = range[0].length
-  let criteriaLength = criteria.length
 
-  for (let i = 0; i < rows; i++) {
-    for (let j = 0; j < columns; j++) {
-      let match = true
+  for (let i = 0; i < resultsLength; i++) {
+    if (results[i]) {
+      const value = range[Math.trunc(i / numOfColumns)][i % numOfColumns]
 
-      for (let c = 0; c < criteriaLength; c += 2) {
-        let criteriaRange = criteria[c]
-        let comparative =
-          typeof criteriaRange[i][j] === 'string' ? criteriaRange[i][j].toLowerCase() : criteriaRange[i][j]
-        let criteriaValue = typeof criteria[c + 1] === 'string' ? criteria[c + 1].toLowerCase() : criteria[c + 1]
-        let tokenizedCriteria = evalExpression.parse(criteriaValue + '')
-        let tokens = [evalExpression.createToken(comparative, evalExpression.TOKEN_TYPE_LITERAL)].concat(
-          tokenizedCriteria
-        )
-
-        if (criteriaValue === undefined || utils.getVariableType(criteriaRange) === 'single') {
-          return error.na
+      if (typeof value === 'number') {
+        if (value > max) {
+          max = value
         }
-
-        if (
-          (criteriaRange && criteriaRange.length !== rows) ||
-          criteriaRange[0].length !== columns ||
-          criteriaRange.formulaError ||
-          utils.getVariableType(criteriaValue) !== 'single'
-        ) {
-          return error.value
-        }
-
-        if (typeof comparative === 'boolean' && typeof criteriaValue === 'boolean') {
-          if (criteriaValue !== comparative) {
-            match = false
-          }
-        } else if (!evalExpression.countIfComputeExpression(tokens)) {
-          match = false
-        }
-      }
-
-      if (match && range[i][j] > max) {
-        max = range[i][j]
+      } else if (value instanceof Error) {
+        return value
       }
     }
   }
@@ -2142,57 +2131,53 @@ export function MAXIFS(range, ...criteria) {
 }
 
 export function MINIFS(range, ...criteria) {
-  if (arguments.length < 3 || (arguments.length > 3 && arguments.length % 2 === 0)) {
+  if (arguments.length < 3 || arguments.length % 2 === 0 || typeof range === 'undefined') {
     return error.na
   }
 
-  if (utils.getVariableType(range) === 'single') {
-    return error.value
+  if (!Array.isArray(range)) {
+    range = [[range]]
   }
 
+  const numOfRows = range.length
+  const numOfColumns = range[0].length
+
+  const criteriaLength = criteria.length
+
+  for (let i = 0; i < criteriaLength; i += 2) {
+    if (typeof criteria[i] === 'undefined') {
+      return error.na
+    }
+
+    if (Array.isArray(criteria[i + 1])) {
+      return error.value
+    }
+
+    if (!Array.isArray(criteria[i])) {
+      criteria[i] = [[criteria[i]]]
+    }
+
+    if (numOfRows !== criteria[i].length || numOfColumns !== criteria[i][0].length) {
+      return error.value
+    }
+  }
+
+  const resultsLength = numOfRows * numOfColumns
+
+  const results = evalExpression.runCriterias(...criteria)
+
   let min = +Infinity
-  let rows = range.length
-  let columns = range[0].length
-  let criteriaLength = criteria.length
 
-  for (let i = 0; i < rows; i++) {
-    for (let j = 0; j < columns; j++) {
-      let match = true
+  for (let i = 0; i < resultsLength; i++) {
+    if (results[i]) {
+      const value = range[Math.trunc(i / numOfColumns)][i % numOfColumns]
 
-      for (let c = 0; c < criteriaLength; c += 2) {
-        let criteriaRange = criteria[c]
-        let comparative =
-          typeof criteriaRange[i][j] === 'string' ? criteriaRange[i][j].toLowerCase() : criteriaRange[i][j]
-        let criteriaValue = typeof criteria[c + 1] === 'string' ? criteria[c + 1].toLowerCase() : criteria[c + 1]
-        let tokenizedCriteria = evalExpression.parse(criteriaValue + '')
-        let tokens = [evalExpression.createToken(comparative, evalExpression.TOKEN_TYPE_LITERAL)].concat(
-          tokenizedCriteria
-        )
-
-        if (criteriaValue === undefined || utils.getVariableType(criteriaRange) === 'single') {
-          return error.na
+      if (typeof value === 'number') {
+        if (value < min) {
+          min = value
         }
-
-        if (
-          (criteriaRange && criteriaRange.length !== rows) ||
-          criteriaRange[0].length !== columns ||
-          criteriaRange.formulaError ||
-          utils.getVariableType(criteriaValue) !== 'single'
-        ) {
-          return error.value
-        }
-
-        if (typeof comparative === 'boolean' && typeof criteriaValue === 'boolean') {
-          if (criteriaValue !== comparative) {
-            match = false
-          }
-        } else if (!evalExpression.countIfComputeExpression(tokens)) {
-          match = false
-        }
-      }
-
-      if (match && range[i][j] < min) {
-        min = range[i][j]
+      } else if (value instanceof Error) {
+        return value
       }
     }
   }
@@ -2571,6 +2556,135 @@ PERCENTILE.INC = (array, k) => {
 
 export const PERCENTRANK = {}
 
+function addNumberToSortedArray(arr, num) {
+  let left = 0
+  let right = arr.length - 1
+
+  while (left <= right) {
+    const mid = Math.floor((left + right) / 2)
+
+    if (arr[mid] === num) {
+      arr.splice(mid, 0, num)
+      return arr
+    }
+
+    if (arr[mid] < num) {
+      left = mid + 1
+    } else {
+      right = mid - 1
+    }
+  }
+
+  arr.splice(left, 0, num)
+  return arr
+}
+
+const getRankAsPercentageForEXC = (index, total) => {
+  return (index + 1) / (total + 1)
+}
+
+const getRankAsPercentageForINC = (index, total) => {
+  return index / (total - 1)
+}
+
+const linearInterpolation = (x, x1, y1, x2, y2) => {
+  return y1 + ((x - x1) / (x2 - x1)) * (y2 - y1)
+}
+
+const floor = (number, significance = 0) => {
+  if (significance === 0) {
+    return Math.trunc(number)
+  }
+
+  const decimals = number % 1
+
+  const targetDecimals = Math.trunc(decimals * 10 ** significance) / 10 ** significance
+
+  return Math.trunc(number) + targetDecimals
+}
+
+const percentRank = function (getRankAsPercentage) {
+  return function (array, x, significance = 3) {
+    if (arguments.length < 2 || arguments.length > 3) {
+      return error.na
+    }
+
+    if (typeof array === 'undefined') {
+      array = [[0]]
+    } else if (!Array.isArray(array)) {
+      array = [[array]]
+    }
+
+    x = utils.parseNumber(x)
+    if (typeof x !== 'number') {
+      return x
+    }
+
+    significance = utils.parseNumber(significance)
+    if (typeof significance !== 'number') {
+      return significance
+    }
+
+    if (significance < 1) {
+      return error.num
+    }
+
+    significance = Math.trunc(significance)
+
+    const sortedArray = []
+
+    const numOfRows = array.length
+    const numOfColumns = array[0].length
+
+    for (let rowIndex = 0; rowIndex < numOfRows; rowIndex++) {
+      const row = array[rowIndex]
+
+      for (let columnIndex = 0; columnIndex < numOfColumns; columnIndex++) {
+        const cellValue = row[columnIndex]
+
+        if (typeof cellValue !== 'number') {
+          if (cellValue instanceof Error) {
+            return cellValue
+          }
+
+          continue
+        }
+
+        addNumberToSortedArray(sortedArray, cellValue)
+      }
+    }
+
+    if (sortedArray.length === 0 || x < sortedArray[0] || x > sortedArray[sortedArray.length - 1]) {
+      return error.na
+    }
+
+    let index = 0
+    while (index < sortedArray.length && sortedArray[index] < x) {
+      index++
+    }
+
+    if (sortedArray[index] === x) {
+      if (sortedArray.length === 1) {
+        return 1
+      }
+
+      const rank = getRankAsPercentage(index, sortedArray.length)
+
+      return floor(rank, significance)
+    }
+
+    const lowerValue = sortedArray[index - 1]
+    const upperValue = sortedArray[index]
+
+    const lowerValueRank = getRankAsPercentage(index - 1, sortedArray.length)
+    const upperValueRank = getRankAsPercentage(index, sortedArray.length)
+
+    const result = linearInterpolation(x, lowerValue, lowerValueRank, upperValue, upperValueRank)
+
+    return floor(result, significance)
+  }
+}
+
 /**
  * Returns the rank of a value in a data set as a percentage (0..1, exclusive) of the data set.
  *
@@ -2581,39 +2695,7 @@ export const PERCENTRANK = {}
  * @param {*} significance Optional. A value that identifies the number of significant digits for the returned percentage value. If omitted, PERCENTRANK.EXC uses three digits (0.xxx).
  * @returns
  */
-PERCENTRANK.EXC = (array, x, significance) => {
-  significance = significance === undefined ? 3 : significance
-  array = utils.parseNumberArray(utils.flatten(array))
-  x = utils.parseNumber(x)
-  significance = utils.parseNumber(significance)
-
-  if (utils.anyIsError(array, x, significance)) {
-    return error.value
-  }
-
-  array = array.sort((a, b) => a - b)
-  const uniques = lookup.UNIQUE.apply(null, array)
-  const n = array.length
-  const m = uniques.length
-  const power = Math.pow(10, significance)
-  let result = 0
-  let match = false
-  let i = 0
-
-  while (!match && i < m) {
-    if (x === uniques[i]) {
-      result = (array.indexOf(uniques[i]) + 1) / (n + 1)
-      match = true
-    } else if (x >= uniques[i] && (x < uniques[i + 1] || i === m - 1)) {
-      result = (array.indexOf(uniques[i]) + 1 + (x - uniques[i]) / (uniques[i + 1] - uniques[i])) / (n + 1)
-      match = true
-    }
-
-    i++
-  }
-
-  return Math.floor(result * power) / power
-}
+PERCENTRANK.EXC = percentRank(getRankAsPercentageForEXC)
 
 /**
  * Returns the percentage rank of a value in a data set.
@@ -2625,39 +2707,7 @@ PERCENTRANK.EXC = (array, x, significance) => {
  * @param {*} significance Optional. A value that identifies the number of significant digits for the returned percentage value. If omitted, PERCENTRANK.INC uses three digits (0.xxx).
  * @returns
  */
-PERCENTRANK.INC = (array, x, significance) => {
-  significance = significance === undefined ? 3 : significance
-  array = utils.parseNumberArray(utils.flatten(array))
-  x = utils.parseNumber(x)
-  significance = utils.parseNumber(significance)
-
-  if (utils.anyIsError(array, x, significance)) {
-    return error.value
-  }
-
-  array = array.sort((a, b) => a - b)
-  const uniques = lookup.UNIQUE.apply(null, array)
-  const n = array.length
-  const m = uniques.length
-  const power = Math.pow(10, significance)
-  let result = 0
-  let match = false
-  let i = 0
-
-  while (!match && i < m) {
-    if (x === uniques[i]) {
-      result = array.indexOf(uniques[i]) / (n - 1)
-      match = true
-    } else if (x >= uniques[i] && (x < uniques[i + 1] || i === m - 1)) {
-      result = (array.indexOf(uniques[i]) + (x - uniques[i]) / (uniques[i + 1] - uniques[i])) / (n - 1)
-      match = true
-    }
-
-    i++
-  }
-
-  return Math.floor(result * power) / power
-}
+PERCENTRANK.INC = percentRank(getRankAsPercentageForINC)
 
 /**
  * Returns the number of permutations for a given number of objects.
@@ -3204,42 +3254,6 @@ export function STANDARDIZE(x, mean, standard_dev) {
   return (x - mean) / standard_dev
 }
 
-export const STDEV = {}
-
-/**
- * Calculates standard deviation based on the entire population.
- *
- * Category: Statistical
- *
- * @param {*} args number1, number2, ... Number arguments 2 to 254 corresponding to a population. You can also use a single array or a reference to an array instead of arguments separated by commas.
- * @returns
- */
-STDEV.P = function () {
-  const v = VAR.P.apply(this, arguments)
-  let result = Math.sqrt(v)
-
-  if (isNaN(result)) {
-    result = error.num
-  }
-
-  return result
-}
-
-/**
- * Estimates standard deviation based on a sample.
- *
- * Category: Statistical
- *
- * @param {*} args number1, number2, ... Number arguments 2 to 254 corresponding to a sample of a population. You can also use a single array or a reference to an array instead of arguments separated by commas.
- * @returns
- */
-STDEV.S = function () {
-  const v = VAR.S.apply(this, arguments)
-  const result = Math.sqrt(v)
-
-  return result
-}
-
 /**
  * Estimates standard deviation based on a sample, including numbers, text, and logical values.
  *
@@ -3320,11 +3334,19 @@ export const T = {}
  * @returns
  */
 T.DIST = (x, deg_freedom, cumulative) => {
-  if (cumulative !== 1 && cumulative !== 2) {
-    return error.num
+  if (deg_freedom < 1) {
+    return error.div0
   }
 
-  return cumulative === 1 ? T.DIST.RT(x, deg_freedom) : T.DIST['2T'](x, deg_freedom)
+  if (typeof x !== 'number' || typeof deg_freedom !== 'number') {
+    return error.value
+  }
+
+  if (cumulative) {
+    return jStat.studentt.cdf(x, deg_freedom)
+  } else {
+    return jStat.studentt.pdf(x, deg_freedom)
+  }
 }
 
 /**
@@ -3523,57 +3545,6 @@ export function TRIMMEAN(range, percent) {
   )
 }
 
-export const VAR = {}
-
-/**
- * Calculates variance based on the entire population.
- *
- * Category: Statistical
- *
- * @param {*} args number1, number2, ... Number arguments 2 to 254 corresponding to a population.
- * @returns
- */
-VAR.P = function () {
-  const range = utils.numbers(utils.flatten(arguments))
-  const n = range.length
-  let sigma = 0
-  const mean = AVERAGE(range)
-  let result
-
-  for (let i = 0; i < n; i++) {
-    sigma += Math.pow(range[i] - mean, 2)
-  }
-
-  result = sigma / n
-
-  if (isNaN(result)) {
-    result = error.num
-  }
-
-  return result
-}
-
-/**
- * Estimates variance based on a sample.
- *
- * Category: Statistical
- *
- * @param {*} args number1, number2, ... Number arguments 2 to 254 corresponding to a sample of a population.
- * @returns
- */
-VAR.S = function () {
-  const range = utils.numbers(utils.flatten(arguments))
-  const n = range.length
-  let sigma = 0
-  const mean = AVERAGE(range)
-
-  for (let i = 0; i < n; i++) {
-    sigma += Math.pow(range[i] - mean, 2)
-  }
-
-  return sigma / (n - 1)
-}
-
 /**
  * Estimates variance based on a sample, including numbers, text, and logical values.
  *
@@ -3674,30 +3645,4 @@ WEIBULL.DIST = (x, alpha, beta, cumulative) => {
   return cumulative
     ? 1 - Math.exp(-Math.pow(x / beta, alpha))
     : (Math.pow(x, alpha - 1) * Math.exp(-Math.pow(x / beta, alpha)) * alpha) / Math.pow(beta, alpha)
-}
-
-export const Z = {}
-
-/**
- * Returns the one-tailed probability-value of a z-test.
- *
- * Category: Statistical
- *
- * @param {*} array The array or range of data against which to test x.
- * @param {*} x The value to test.
- * @param {*} sigma Optional. The population (known) standard deviation. If omitted, the sample standard deviation is used.
- * @returns
- */
-Z.TEST = (array, x, sigma) => {
-  array = utils.parseNumberArray(utils.flatten(array))
-  x = utils.parseNumber(x)
-
-  if (utils.anyIsError(array, x)) {
-    return error.value
-  }
-
-  sigma = sigma || STDEV.S(array)
-  const n = array.length
-
-  return 1 - NORM.S.DIST((AVERAGE(array) - x) / (sigma / Math.sqrt(n)), true)
 }

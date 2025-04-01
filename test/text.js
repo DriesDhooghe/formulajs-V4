@@ -306,6 +306,9 @@ describe('Text', () => {
 
   it('FIXED', () => {
     expect(text.FIXED(1234.567, 1)).to.equal('1,234.6')
+    expect(text.FIXED(21.45, 1)).to.equal('21.5')
+    expect(text.FIXED(21.45)).to.equal('21.45')
+    expect(text.FIXED(21.45, 3)).to.equal('21.450')
     expect(text.FIXED(1234.567, -1)).to.equal('1,230')
     expect(text.FIXED(-1234.567, -1, true)).to.equal('-1230')
     expect(text.FIXED(44.332)).to.equal('44.33')
@@ -315,11 +318,37 @@ describe('Text', () => {
     expect(text.FIXED(12345.6789, -2)).to.equal('12,300')
     expect(text.FIXED(12134567.89, -3, 1)).to.equal('12135000')
     expect(text.FIXED(12345.789, 3 / 4)).to.equal('12,346')
+    expect(text.FIXED(12345.789, -1.99)).to.equal('12,350')
     expect(text.FIXED(12345.789, 8 / 5)).to.equal('12,345.8')
     expect(text.FIXED(1234.56789, 5)).to.equal('1,234.56789')
     expect(text.FIXED(1234.567899, 5)).to.equal('1,234.56790')
     expect(text.FIXED(1234.5, 5)).to.equal('1,234.50000')
     expect(text.FIXED(123456.9, 4)).to.equal('123,456.9000')
+
+    expect(text.FIXED()).to.equal(error.na)
+    expect(text.FIXED(1, 1, false, true)).to.equal(error.na)
+
+    expect(text.FIXED('1234.567', 1, true)).to.equal('1234.6')
+    expect(text.FIXED(1234.567, '1', true)).to.equal('1234.6')
+    expect(text.FIXED(1234.567, 1, 'true')).to.equal('1234.6')
+
+    expect(text.FIXED('test', 1, true)).to.equal(error.value)
+    expect(text.FIXED(1234.567, 'test', true)).to.equal(error.value)
+    expect(text.FIXED(1234.567, 1, 'test')).to.equal(error.value)
+
+    expect(text.FIXED(null, 1, true)).to.equal('0.0')
+    expect(text.FIXED(1234.567, null)).to.equal('1,235')
+    expect(text.FIXED(1234.567, 1, null)).to.equal('1,234.6')
+
+    expect(text.FIXED(undefined, 1, true)).to.equal('0.0')
+    expect(text.FIXED(1234.567, undefined, true)).to.equal('1234.57')
+    expect(text.FIXED(1234.567, 1, undefined)).to.equal('1,234.6')
+
+    Object.values(error).forEach((err) => {
+      expect(text.FIXED(err, 0)).to.equal(err)
+      expect(text.FIXED(1234.5678, err)).to.equal(err)
+      expect(text.FIXED(1234.5678, 0, err)).to.equal(err)
+    })
   })
 
   it('LEFT', () => {
@@ -519,8 +548,8 @@ describe('Text', () => {
     })
   })
 
-  it('PRONETIC', () => {
-    expect(text.PRONETIC).to.throw('PRONETIC is not implemented')
+  it('PHONETIC', () => {
+    expect(text.PHONETIC).to.throw('PHONETIC is not implemented')
   })
 
   it('PROPER', () => {
@@ -552,25 +581,121 @@ describe('Text', () => {
   })
 
   it('REGEXEXTRACT', () => {
-    expect(text.REGEXEXTRACT('(Content) between brackets', '(([A-Za-z]+))')).to.equal('Content')
+    expect(text.REGEXEXTRACT('(Content) between brackets', '\\(([A-Za-z]+)\\)')).to.equal('Content')
     expect(text.REGEXEXTRACT('The price today is $826.25', '[0-9]+.[0-9]+[0-9]+')).to.equal('826.25')
     expect(text.REGEXEXTRACT('Google Doc 101', '[0-9]+')).to.equal('101')
+    expect(text.REGEXEXTRACT('1 test 20', '(\\d+)\\D+(\\d+)')).to.eql([['1', '20']])
+    expect(text.REGEXEXTRACT('Google Doc 101', 'a')).to.equal(error.na)
+
+    expect(text.REGEXEXTRACT('', '\\D+')).to.equal(error.na)
+    expect(text.REGEXEXTRACT(null, '\\D+')).to.equal(error.na)
+    expect(text.REGEXEXTRACT(undefined, '\\D+')).to.equal(error.na)
+    expect(text.REGEXEXTRACT('1 test 20', '')).to.equal('')
+    expect(text.REGEXEXTRACT('1 test 20', null)).to.equal('')
+    expect(text.REGEXEXTRACT('1 test 20', undefined)).to.equal('')
+
+    expect(text.REGEXEXTRACT(1, 'e')).to.equal(error.value)
+    expect(text.REGEXEXTRACT('test', 1)).to.equal(error.value)
+    expect(text.REGEXEXTRACT(true, 'e')).to.equal(error.value)
+    expect(text.REGEXEXTRACT('test', true)).to.equal(error.value)
+    expect(text.REGEXEXTRACT('1 test 20', [['(\\d+)\\D+(\\d+)', '(\\d+)\\D+']])).to.equal(error.value)
+    expect(text.REGEXEXTRACT([['1 test 20', '1 test 18']], '(\\d+)\\D+(\\d+)')).to.equal(error.value)
+    expect(text.REGEXEXTRACT([['1 test 20', '1 test 18']], [['(\\d+)\\D+(\\d+)', '(\\d+)\\D+']])).to.equal(error.value)
+
+    expect(text.REGEXEXTRACT('test', 'e', true)).to.equal(error.na)
     expect(text.REGEXEXTRACT('Google Doc 101')).to.equal(error.na)
     expect(text.REGEXEXTRACT()).to.equal(error.na)
+
+    Object.values(error).forEach((err) => {
+      expect(text.REGEXEXTRACT('test', err)).to.equal(err)
+      expect(text.REGEXEXTRACT(err, 'e')).to.equal(err)
+    })
   })
 
   it('REGEXREPLACE', () => {
-    expect(text.REGEXREPLACE('(Content) between brackets', '(([A-Za-z]+))', 'Me')).to.equal('(Me) between brackets')
+    expect(text.REGEXREPLACE('(Content) between brackets', '\\([A-Za-z]+\\)', 'Me')).to.equal('Me between brackets')
+    expect(text.REGEXREPLACE('(Content) between brackets', '(([A-Za-z]+))', 'Me')).to.equal('(Me) Me Me')
+    expect(text.REGEXREPLACE('1 test 20 something 3', '\\D+\\d+', 'replacement')).to.equal('1replacementreplacement')
+    expect(text.REGEXREPLACE('1 test 20 something 3', '(\\D+)(\\d+)', 'replacement')).to.equal(
+      '1replacementreplacement'
+    )
+
+    expect(text.REGEXREPLACE('', '\\D+\\d+', 'replacement')).to.equal('')
+    expect(text.REGEXREPLACE(null, '\\D+\\d+', 'replacement')).to.equal('')
+    expect(text.REGEXREPLACE(undefined, '\\D+\\d+', 'replacement')).to.equal('')
+
+    expect(text.REGEXREPLACE('1 test', '', 'a')).to.equal('a1a ataeasata')
+    expect(text.REGEXREPLACE('1 test', null, 'a')).to.equal('a1a ataeasata')
+    expect(text.REGEXREPLACE('1 test', undefined, 'a')).to.equal('a1a ataeasata')
+
+    expect(text.REGEXREPLACE('1 test 20 something 3', '\\D+\\d+', '')).to.equal('1')
+    expect(text.REGEXREPLACE('1 test 20 something 3', '\\D+\\d+', null)).to.equal('1')
+    expect(text.REGEXREPLACE('1 test 20 something 3', '\\D+\\d+', undefined)).to.equal('1')
+
+    expect(text.REGEXREPLACE(1, '\\D+\\d+', 'replacement')).to.equal(error.value)
+    expect(text.REGEXREPLACE(true, '\\D+\\d+', 'replacement')).to.equal(error.value)
+    expect(text.REGEXREPLACE('1 test 20 something 3', 1, 'replacement')).to.equal(error.value)
+    expect(text.REGEXREPLACE('1 test 20 something 3', true, 'replacement')).to.equal(error.value)
+    expect(text.REGEXREPLACE('1 test 20 something 3', '\\D+\\d+', 1)).to.equal(error.value)
+    expect(text.REGEXREPLACE('1 test 20 something 3', '\\D+\\d+', true)).to.equal(error.value)
+    expect(text.REGEXREPLACE([['1 test 20 something 3', '2 test 21 something 4']], '\\D+\\d+', 'replacement')).to.equal(
+      error.value
+    )
+    expect(text.REGEXREPLACE('1 test 20 something 3', [['\\D+\\d+', '\\d+']], 'replacement')).to.equal(error.value)
+    expect(text.REGEXREPLACE('1 test 20 something 3', '\\D+\\d+', [['replacement', 'replace']])).to.equal(error.value)
+
+    expect(text.REGEXREPLACE('(Content) between brackets', '(([A-Za-z]+))', 'Me', true)).to.equal(error.na)
     expect(text.REGEXREPLACE('(Content) between brackets', '(([A-Za-z]+))')).to.equal(error.na)
     expect(text.REGEXREPLACE('(Content) between brackets')).to.equal(error.na)
     expect(text.REGEXREPLACE()).to.equal(error.na)
+
+    Object.values(error).forEach((err) => {
+      expect(text.REGEXREPLACE(err, '\\D+\\d+', 'replacement')).to.equal(err)
+      expect(text.REGEXREPLACE('1 test 20 something 3', err, 'replacement')).to.equal(err)
+      expect(text.REGEXREPLACE('1 test 20 something 3', '\\D+\\d+', err)).to.equal(err)
+    })
   })
 
   it('REGEXMATCH', () => {
-    expect(text.REGEXMATCH('(Content) between brackets', '(([A-Za-z]+))', true)).to.be.a('array')
-    expect(text.REGEXMATCH('(Content) between brackets', '(([A-Za-z]+))', false)).to.equal(true)
-    expect(text.REGEXMATCH('(Content) between brackets')).to.equal(error.na)
+    expect(text.REGEXMATCH('test 100', '\\D\\d')).to.equal(true)
+    expect(text.REGEXMATCH('test 100', '^\\D\\d$')).to.equal(false)
+    expect(text.REGEXMATCH('test 100', '^\\D+\\d+$')).to.equal(true)
+
+    expect(text.REGEXMATCH('test 100', null)).to.equal(true)
+    expect(text.REGEXMATCH('test 100', '')).to.equal(true)
+    expect(text.REGEXMATCH('test 100', undefined)).to.equal(true)
+
+    expect(text.REGEXMATCH(null, null)).to.equal(true)
+    expect(text.REGEXMATCH(null, '')).to.equal(true)
+    expect(text.REGEXMATCH(null, undefined)).to.equal(true)
+
+    expect(text.REGEXMATCH('', '')).to.equal(true)
+    expect(text.REGEXMATCH('', undefined)).to.equal(true)
+    expect(text.REGEXMATCH('', null)).to.equal(true)
+
+    expect(text.REGEXMATCH(undefined, '')).to.equal(true)
+    expect(text.REGEXMATCH(undefined, null)).to.equal(true)
+    expect(text.REGEXMATCH(undefined, undefined)).to.equal(true)
+
+    expect(text.REGEXMATCH(null, '\\D\\d')).to.equal(false)
+    expect(text.REGEXMATCH(undefined, '\\D\\d')).to.equal(false)
+    expect(text.REGEXMATCH('', '\\D\\d')).to.equal(false)
+
+    expect(text.REGEXMATCH(1, '^\\D+\\d+$')).to.equal(error.value)
+    expect(text.REGEXMATCH(true, '^\\D+\\d+$')).to.equal(error.value)
+    expect(text.REGEXMATCH('test 100', 1)).to.equal(error.value)
+    expect(text.REGEXMATCH('test 100', true)).to.equal(error.value)
+    expect(text.REGEXMATCH([['test 100', 'test 101']], '^\\D+\\d+$')).to.equal(error.value)
+    expect(text.REGEXMATCH('test 100', [['^\\D+\\d+$', '\\d+']])).to.equal(error.value)
+
+    expect(text.REGEXMATCH('test 100', '\\D\\d', true)).to.equal(error.na)
+    expect(text.REGEXMATCH('test 100')).to.equal(error.na)
     expect(text.REGEXMATCH()).to.equal(error.na)
+
+    Object.values(error).forEach((err) => {
+      expect(text.REGEXMATCH(err, '^\\D+\\d+$')).to.equal(err)
+      expect(text.REGEXMATCH('test 100', err)).to.equal(err)
+    })
   })
 
   it('REPLACE', () => {
@@ -831,13 +956,12 @@ describe('Text', () => {
       expect(text.SUBSTITUTE(true, 'T', 'b')).to.equal('bRUE')
       expect(text.SUBSTITUTE(false, 'F', 'b')).to.equal('bALSE')
       expect(text.SUBSTITUTE('tuttle', true, 'b')).to.equal('tuttle')
-      expect(text.SUBSTITUTE('tuttle', 't', true)).to.equal('tuttle')
+      expect(text.SUBSTITUTE('tuttle', 't', true)).to.equal('TRUEuTRUETRUEle')
 
       expect(text.SUBSTITUTE('Jim Alateras', '', 'ames')).to.equal('Jim Alateras')
       expect(text.SUBSTITUTE('Jim Alateras', undefined, 'ames')).to.equal('Jim Alateras')
       expect(text.SUBSTITUTE('Jim, Alateras, Sr.', ',', '')).to.equal('Jim Alateras Sr.')
       expect(text.SUBSTITUTE('', 'im', 'ames')).to.equal('')
-      expect(text.SUBSTITUTE(undefined, 'im', 'ames')).to.not.exist
     })
 
     it('should substitute regex meta-characters without interpretation', () => {
@@ -860,7 +984,8 @@ describe('Text', () => {
       expect(text.SUBSTITUTE('tuttle', 'P', 'b', 1)).to.equal('tuttle')
       expect(text.SUBSTITUTE('tuttle', 'T', 'b', 1)).to.equal('tuttle')
       expect(text.SUBSTITUTE('tuttle', 't', 'b', 1)).to.equal('buttle')
-      expect(text.SUBSTITUTE('tuttle', 't', 'b', 1)).to.equal('buttle')
+      expect(text.SUBSTITUTE('tuttle', 't', 'b', '     1')).to.equal('buttle')
+      expect(text.SUBSTITUTE('tuttle', 't', 'b', '1    ')).to.equal('buttle')
       expect(text.SUBSTITUTE('tuttle', 't', 'b', 2)).to.equal('tubtle')
       expect(text.SUBSTITUTE('tuttle', 't', 'b', 3)).to.equal('tutble')
       expect(text.SUBSTITUTE('tuttle', 't', 'b', 4)).to.equal('tuttle')
@@ -871,12 +996,17 @@ describe('Text', () => {
       expect(text.SUBSTITUTE('a-a-a', '-', ':', 2)).to.equal('a-a:a')
       expect(text.SUBSTITUTE('a-a-a', '-', ':', 2.5)).to.equal('a-a:a')
       expect(text.SUBSTITUTE('a-a-a', '-', ':', 3)).to.equal('a-a-a')
+
+      expect(text.SUBSTITUTE('aldldlda', 'ldld', '9', 1)).to.equal('a9lda')
+      expect(text.SUBSTITUTE('aldldlda', 'ldld', '9', 2)).to.equal('ald9a')
     })
 
     it('should return a #VALUE! error if occurrence is not a number greater than or equal to 1', () => {
       expect(text.SUBSTITUTE('tuttle', 't', 'b', 'text')).to.equal(error.value)
       expect(text.SUBSTITUTE('tuttle', 't', 'b', null)).to.equal(error.value)
+      expect(text.SUBSTITUTE('tuttle', 't', 'b', undefined)).to.equal(error.value)
       expect(text.SUBSTITUTE('tuttle', 't', 'b', true)).to.equal(error.value)
+      expect(text.SUBSTITUTE('tuttle', 't', 'b', false)).to.equal(error.value)
 
       expect(text.SUBSTITUTE('a-a-a', '-', ':', '')).to.equal(error.value)
       expect(text.SUBSTITUTE('a-a-a', '-', ':', 'x')).to.equal(error.value)
@@ -885,6 +1015,32 @@ describe('Text', () => {
       expect(text.SUBSTITUTE('a-a-a', '-', ':', -1)).to.equal(error.value)
       expect(text.SUBSTITUTE('a-a-a', '-', ':', 0)).to.equal(error.value)
       expect(text.SUBSTITUTE('a-a-a', '-', ':', 0.5)).to.equal(error.value)
+      expect(text.SUBSTITUTE('a-a-a', '-', ':', '1a')).to.equal(error.value)
+      expect(text.SUBSTITUTE('a-a-a', '-', ':', 'a1')).to.equal(error.value)
+    })
+
+    it('Non-textual arguments', () => {
+      expect(text.SUBSTITUTE(5000, 0, 4)).to.equal('5444')
+
+      expect(text.SUBSTITUTE('the text is true', true, false)).to.equal('the text is true')
+      expect(text.SUBSTITUTE('the text is TRUE', true, false)).to.equal('the text is FALSE')
+      expect(text.SUBSTITUTE('the text is false', false, true)).to.equal('the text is false')
+      expect(text.SUBSTITUTE('the text is FALSE', false, true)).to.equal('the text is TRUE')
+    })
+
+    it('Omitted arguments', () => {
+      expect(text.SUBSTITUTE(undefined, 'e', '9')).to.equal('')
+      expect(text.SUBSTITUTE('test', undefined, '9')).to.equal('test')
+      expect(text.SUBSTITUTE('test', 'e', undefined)).to.equal('tst')
+    })
+
+    it('Errors', () => {
+      Object.values(error).forEach((err) => {
+        expect(text.SUBSTITUTE(err, '0', 'a')).to.equal(err)
+        expect(text.SUBSTITUTE('test', err, 'a')).to.equal(err)
+        expect(text.SUBSTITUTE('test', 'e', err)).to.equal(err)
+        expect(text.SUBSTITUTE('test', 'e', ',', err)).to.equal(err)
+      })
     })
   })
 

@@ -308,32 +308,65 @@ export function FINDB() {
  * @returns
  */
 export function FIXED(number, decimals = 2, no_commas = false) {
-  number = utils.parseNumber(number)
-  if (isNaN(number)) {
+  if (arguments.length === 0 || arguments.length > 3) {
+    return error.na
+  }
+
+  if (number === undefined) {
+    number = 0
+  } else {
+    number = utils.getNumber(number)
+
+    if (number instanceof Error) {
+      return number
+    }
+
+    if (typeof number !== 'number') {
+      return error.value
+    }
+  }
+
+  decimals = utils.getNumber(decimals)
+  if (decimals instanceof Error) {
+    return decimals
+  }
+
+  if (typeof decimals !== 'number') {
     return error.value
   }
 
-  decimals = utils.parseNumber(decimals)
-  if (isNaN(decimals)) {
-    return error.value
+  no_commas = utils.parseBool(no_commas)
+  if (no_commas instanceof Error) {
+    return no_commas
   }
+
+  decimals = Math.trunc(decimals)
+
+  let result
 
   if (decimals < 0) {
     const factor = Math.pow(10, -decimals)
-    number = Math.round(number / factor) * factor
+    result = Math.round(number / factor) * factor
+
+    result = result.toString()
   } else {
-    number = number.toFixed(decimals)
+    let parts = number.toString().split('.')
+    let fraction = parts[1]
+
+    if (fraction && fraction.length > decimals && fraction[fraction.length - 1] === '5') {
+      number = parseFloat(parts[0] + '.' + fraction + '1')
+    }
+
+    result = number.toFixed(decimals)
   }
 
   if (no_commas) {
-    number = number.toString().replace(/,/g, '')
-  } else {
-    const parts = number.toString().split('.')
-    parts[0] = parts[0].replace(/\B(?=(\d{3})+$)/g, ',')
-    number = parts.join('.')
+    return result
   }
 
-  return number
+  const parts = result.split('.')
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+$)/g, ',')
+  return parts.join('.')
 }
 
 /**
@@ -523,8 +556,8 @@ export function NUMBERVALUE(text, decimal_separator, group_separator) {
 /**
  * -- Not implemented --
  */
-export function PRONETIC() {
-  throw new Error('PRONETIC is not implemented')
+export function PHONETIC() {
+  throw new Error('PHONETIC is not implemented')
 }
 
 /**
@@ -558,31 +591,107 @@ export function PROPER(text) {
 }
 
 export function REGEXEXTRACT(text, regular_expression) {
-  if (arguments.length < 2) {
+  if (arguments.length !== 2) {
     return error.na
+  }
+
+  if (text instanceof Error) {
+    return text
+  }
+
+  if (typeof text === 'undefined' || text === null) {
+    text = ''
+  } else if (typeof text !== 'string') {
+    return error.value
+  }
+
+  if (regular_expression instanceof Error) {
+    return regular_expression
+  }
+
+  if (typeof regular_expression === 'undefined' || regular_expression === null) {
+    regular_expression = ''
+  } else if (typeof regular_expression !== 'string') {
+    return error.value
   }
 
   const match = text.match(new RegExp(regular_expression))
 
-  return match ? match[match.length > 1 ? match.length - 1 : 0] : null
+  if (!match) {
+    return error.na
+  }
+
+  if (match.length <= 2) {
+    return match[match.length - 1]
+  }
+
+  return [match.slice(1)]
 }
 
 export function REGEXREPLACE(text, regular_expression, replacement) {
-  if (arguments.length < 3) {
+  if (arguments.length !== 3) {
     return error.na
   }
 
-  return text.replace(new RegExp(regular_expression), replacement)
+  if (text instanceof Error) {
+    return text
+  }
+
+  if (typeof text === 'undefined' || text === null) {
+    text = ''
+  } else if (typeof text !== 'string') {
+    return error.value
+  }
+
+  if (regular_expression instanceof Error) {
+    return regular_expression
+  }
+
+  if (typeof regular_expression === 'undefined' || regular_expression === null) {
+    regular_expression = ''
+  } else if (typeof regular_expression !== 'string') {
+    return error.value
+  }
+
+  if (replacement instanceof Error) {
+    return replacement
+  }
+
+  if (typeof replacement === 'undefined' || replacement === null) {
+    replacement = ''
+  } else if (typeof replacement !== 'string') {
+    return error.value
+  }
+
+  return text.replace(new RegExp(regular_expression, 'g'), replacement)
 }
 
-export function REGEXMATCH(text, regular_expression, full) {
-  if (arguments.length < 2) {
+export function REGEXMATCH(text, regular_expression) {
+  if (arguments.length !== 2) {
     return error.na
   }
 
-  const match = text.match(new RegExp(regular_expression))
+  if (text instanceof Error) {
+    return text
+  }
 
-  return full ? match : !!match
+  if (typeof text === 'undefined' || text === null) {
+    text = ''
+  } else if (typeof text !== 'string') {
+    return error.value
+  }
+
+  if (regular_expression instanceof Error) {
+    return regular_expression
+  }
+
+  if (typeof regular_expression === 'undefined' || regular_expression === null) {
+    regular_expression = ''
+  } else if (typeof regular_expression !== 'string') {
+    return error.value
+  }
+
+  return new RegExp(regular_expression).test(text)
 }
 
 /**
@@ -780,51 +889,66 @@ export function SUBSTITUTE(text, old_text, new_text, instance_num) {
     return error.na
   }
 
-  if (new_text === null) {
-    new_text = ''
+  const anyError = utils.anyError(text, old_text, new_text, instance_num)
+  if (anyError) {
+    return anyError
   }
 
-  if (text === null) {
-    text = ''
+  if (typeof new_text === 'boolean') {
+    new_text = new_text.toString().toUpperCase()
+  } else if (typeof new_text === 'number') {
+    new_text = new_text.toString()
+  } else if (typeof new_text === 'undefined' || new_text === null) {
+    new_text = ''
   }
 
   if (typeof text === 'boolean') {
     text = text.toString().toUpperCase()
+  } else if (typeof text === 'number') {
+    text = text.toString()
+  } else if (typeof text === 'undefined' || text === null) {
+    text = ''
   }
 
-  if (typeof new_text === 'boolean') {
-    return text
+  if (typeof old_text === 'boolean') {
+    old_text = old_text.toString().toUpperCase()
+  } else if (typeof old_text === 'number') {
+    old_text = old_text.toString()
   }
 
-  if (typeof instance_num === 'boolean') {
-    return error.value
-  }
+  if (arguments.length === 4) {
+    if (typeof instance_num === 'boolean') {
+      return error.value
+    }
 
-  if (!text || !old_text) {
-    return text
-  } else if (instance_num === undefined) {
-    return text.split(old_text).join(new_text)
-  } else {
     instance_num = Math.floor(Number(instance_num))
 
     if (Number.isNaN(instance_num) || instance_num <= 0) {
       return error.value
     }
+  }
 
-    let index = text.indexOf(old_text)
-    let i = 0
-
-    while (index > -1) {
-      i++
-
-      if (i === instance_num) {
-        return text.substring(0, index) + new_text + text.substring(index + old_text.length)
-      }
-      index = text.indexOf(old_text, index + 1)
-    }
-
+  if (!text || !old_text) {
     return text
   }
+
+  if (instance_num === undefined) {
+    return text.split(old_text).join(new_text)
+  }
+
+  let index = text.indexOf(old_text)
+  let i = 0
+
+  while (index > -1) {
+    i++
+
+    if (i === instance_num) {
+      return text.substring(0, index) + new_text + text.substring(index + old_text.length)
+    }
+    index = text.indexOf(old_text, index + 1)
+  }
+
+  return text
 }
 
 /**

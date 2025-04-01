@@ -1,13 +1,25 @@
 import { isValidNumber } from './common.js'
+import * as error from './error.js'
 
 const defaultOperator = '='
 const validSymbols = ['>', '>=', '<', '<=', '=', '<>']
+const validSymbolsLength = validSymbols.length
 const _TOKEN_TYPE_OPERATOR = 'operator'
 const _TOKEN_TYPE_LITERAL = 'literal'
 const SUPPORTED_TOKENS = [_TOKEN_TYPE_OPERATOR, _TOKEN_TYPE_LITERAL]
 
 export const TOKEN_TYPE_OPERATOR = _TOKEN_TYPE_OPERATOR
 export const TOKEN_TYPE_LITERAL = _TOKEN_TYPE_LITERAL
+
+export const isValidExpression = function (expression) {
+  for (let index = 0; index < validSymbolsLength; index++) {
+    if (expression.startsWith(validSymbols[index])) {
+      return true
+    }
+  }
+
+  return false
+}
 
 /**
  * Create token which describe passed symbol/value.
@@ -34,12 +46,16 @@ export function createToken(value, type) {
  * @return {*}
  */
 function castValueToCorrectType(value) {
-  if (typeof value !== 'string') {
-    return value
+  if (isValidNumber(value.trim(), true)) {
+    return value.indexOf('.') === -1 ? parseInt(value, 10) : parseFloat(value)
   }
 
-  if (isValidNumber(value)) {
-    value = value.indexOf('.') === -1 ? parseInt(value, 10) : parseFloat(value)
+  if (value === 'false') {
+    return false
+  }
+
+  if (value === 'true') {
+    return true
   }
 
   return value
@@ -52,6 +68,10 @@ function castValueToCorrectType(value) {
  * @return {String[]}
  */
 function tokenizeExpression(expression) {
+  if (expression === '') {
+    return ['']
+  }
+
   const expressionLength = expression.length
   const tokens = []
   let cursorIndex = 0
@@ -117,13 +137,7 @@ function analyzeTokens(tokens) {
     }
   }
 
-  if (literalValue.length > 0) {
-    analyzedTokens.push(createToken(castValueToCorrectType(literalValue), TOKEN_TYPE_LITERAL))
-  }
-
-  if (analyzedTokens.length > 0 && analyzedTokens[0].type !== TOKEN_TYPE_OPERATOR) {
-    analyzedTokens.unshift(createToken(defaultOperator, TOKEN_TYPE_OPERATOR))
-  }
+  analyzedTokens.push(createToken(castValueToCorrectType(literalValue), TOKEN_TYPE_LITERAL))
 
   return analyzedTokens
 }
@@ -214,97 +228,248 @@ export function countIfComputeExpression(tokens) {
   return countIfEvaluate(values, operator)
 }
 
-const stringCompare = function (value, criteria) {
-  const splittedCriteria = criteria.split('')
+export function runCriterias() {
+  const numOfRows = arguments[0].length
+  const numOfColumns = arguments[0][0].length
 
-  let analyzedPosition = 0
-  for (let i = 0; i < splittedCriteria.length; i++) {
-    if (splittedCriteria[i] === '~') {
-      if (splittedCriteria[i + 1] === '?') {
-        if (value[analyzedPosition] !== '?') {
-          return false
+  const resultsLength = numOfRows * numOfColumns
+  const results = new Array(resultsLength)
+
+  for (let i = 0; i < resultsLength; i++) {
+    results[i] = true
+  }
+
+  const numOfArguments = arguments.length
+
+  for (let criteriaIndex = 0; criteriaIndex < numOfArguments; criteriaIndex += 2) {
+    const criteriaRange = arguments[criteriaIndex]
+    let criteria = arguments[criteriaIndex + 1]
+
+    if (typeof criteria === 'undefined' || criteria === null) {
+      criteria = '=0'
+    } else if (typeof criteria !== 'string') {
+      if (criteria instanceof Error) {
+        criteria = criteria.message
+      } else {
+        criteria = '=' + criteria
+      }
+    }
+
+    const tokenizedCriteria = parse(criteria.toLowerCase())
+
+    for (let y = 0; y < numOfRows; y++) {
+      const row = criteriaRange[y]
+
+      for (let x = 0; x < numOfColumns; x++) {
+        const resultPosition = y * numOfColumns + x
+
+        if (results[resultPosition]) {
+          let value = row[x]
+
+          if (typeof value === 'string') {
+            value = value.toLowerCase()
+          }
+
+          const tokens = [createToken(value, TOKEN_TYPE_LITERAL)].concat(tokenizedCriteria)
+
+          if (!countIfComputeExpression(tokens)) {
+            results[resultPosition] = false
+          }
         }
-
-        analyzedPosition++
-        i++
-      } else if (splittedCriteria[i + 1] === '*') {
-        if (value[analyzedPosition] !== '*') {
-          return false
-        }
-
-        analyzedPosition++
-        i++
-      } else if (splittedCriteria[i + 1] === '~') {
-        if (value[analyzedPosition] !== '~') {
-          return false
-        }
-
-        analyzedPosition++
-        i++
       }
-    } else if (splittedCriteria[i] === '?') {
-      if (analyzedPosition >= value.length) {
-        return false
-      }
-
-      analyzedPosition++
-    } else if (splittedCriteria[i] === '*') {
-      if (i === splittedCriteria.length - 1) {
-        return true
-      }
-
-      let result = stringCompare(value.slice(analyzedPosition), criteria.slice(i + 1))
-
-      while (analyzedPosition < value.length && !result) {
-        analyzedPosition++
-
-        result = stringCompare(value.slice(analyzedPosition), criteria.slice(i + 1))
-      }
-
-      return result
-    } else {
-      if (value[analyzedPosition] !== splittedCriteria[i]) {
-        return false
-      }
-
-      analyzedPosition++
     }
   }
 
-  if (analyzedPosition !== value.length) {
+  return results
+}
+
+export function countIfCompare(value, criteria) {
+  const criteriaType = typeof criteria
+  if (criteriaType === 'number') {
+    const cellValue = value
+    const cellValueType = typeof cellValue
+
+    if (cellValueType === 'number') {
+      return cellValue === criteria
+    }
+
+    if (cellValueType === 'string' && isValidNumber(cellValue, true)) {
+      return parseFloat(cellValue) === criteria
+    }
+
     return false
   }
 
-  return true
+  if (criteria === '') {
+    return value === '' || value === null
+  }
+
+  if (criteriaType === 'string' && typeof value === 'string') {
+    return stringCompare(value, criteria)
+  }
+
+  return value === criteria
 }
+
+const customFindIndex = function (value, valueIndex, criteria, criteriaIndex) {
+  const currentCriteriaChar = criteria[criteriaIndex]
+
+  if (currentCriteriaChar === '~') {
+    return value.indexOf(criteria[criteriaIndex + 1], valueIndex)
+  }
+
+  if (currentCriteriaChar === '?') {
+    return valueIndex >= value.length ? -1 : valueIndex
+  }
+
+  return value.indexOf(currentCriteriaChar, valueIndex)
+}
+
+export const stringCompare = function (value, criteria) {
+  let valueIndex = 0
+
+  const criteriaLength = criteria.length
+  for (let criteriaIndex = 0; criteriaIndex < criteriaLength; criteriaIndex++) {
+    const currentCriteriaChar = criteria[criteriaIndex]
+
+    if (currentCriteriaChar === '~') {
+      const nextCriteriaChar = criteria[criteriaIndex + 1]
+
+      if (nextCriteriaChar === '?') {
+        if (value[valueIndex] !== '?') {
+          return false
+        }
+
+        valueIndex++
+        criteriaIndex++
+      } else if (nextCriteriaChar === '*') {
+        if (value[valueIndex] !== '*') {
+          return false
+        }
+
+        valueIndex++
+        criteriaIndex++
+      } else if (nextCriteriaChar === '~') {
+        if (value[valueIndex] !== '~') {
+          return false
+        }
+
+        valueIndex++
+        criteriaIndex++
+      }
+    } else if (currentCriteriaChar === '?') {
+      if (valueIndex >= value.length) {
+        return false
+      }
+
+      valueIndex++
+    } else if (currentCriteriaChar === '*') {
+      do {
+        criteriaIndex++
+
+        if (criteriaIndex === criteriaLength) {
+          return true
+        }
+      } while (criteria[criteriaIndex] === '*')
+
+      if (criteria[criteriaIndex] === '~') {
+        const nextCriteriaChar = criteria[criteriaIndex + 1]
+
+        if (nextCriteriaChar !== '?' && nextCriteriaChar !== '*' && nextCriteriaChar !== '~') {
+          criteriaIndex++
+        }
+      }
+
+      if (criteriaIndex === criteriaLength) {
+        return true
+      }
+
+      let nextIndex = customFindIndex(value, valueIndex, criteria, criteriaIndex)
+
+      while (nextIndex >= 0) {
+        const result = stringCompare(value.slice(nextIndex), criteria.slice(criteriaIndex))
+
+        if (result) {
+          return true
+        }
+
+        nextIndex = customFindIndex(value, nextIndex + 1, criteria, criteriaIndex)
+      }
+
+      return false
+    } else {
+      if (value[valueIndex] !== currentCriteriaChar) {
+        return false
+      }
+
+      valueIndex++
+    }
+  }
+
+  return valueIndex === value.length
+}
+
+const errorMessages = Object.values(error).map((err) => err.message.toLowerCase())
 
 const compare = {
   '>': function (values) {
-    return values[0] > values[1]
+    return typeof values[0] === typeof values[1] && values[0] > values[1]
   },
   '>=': function (values) {
-    return values[0] >= values[1]
+    return typeof values[0] === typeof values[1] && values[0] >= values[1]
   },
   '<': function (values) {
-    return values[0] < values[1]
+    return typeof values[0] === typeof values[1] && values[0] < values[1]
   },
   '<=': function (values) {
-    return values[0] <= values[1]
+    return typeof values[0] === typeof values[1] && values[0] <= values[1]
   },
   '=': function (values) {
-    if (typeof values[0] !== 'string') {
-      return values[0] === values[1]
+    if (typeof values[1] === 'number') {
+      if (typeof values[0] === 'number') {
+        return values[0] === values[1]
+      }
+
+      if (typeof values[0] === 'string') {
+        return parseFloat(values[0]) === values[1]
+      }
+
+      return false
     }
 
-    return stringCompare(values[0], values[1])
+    if (typeof values[1] === 'string') {
+      if (errorMessages.includes(values[1])) {
+        return values[0] instanceof Error && values[0].message.toLowerCase() === values[1]
+      }
+
+      if (values[1] === '') {
+        return values[0] === null
+      }
+
+      if (typeof values[0] === 'string') {
+        return stringCompare(values[0], values[1])
+      }
+
+      return false
+    }
+
+    return values[0] === values[1]
   },
   '<>': function (values) {
-    if (values.length === 1) {
+    if (values[1] === '') {
       return values[0] !== null
     }
 
-    if (typeof values[0] === 'string' && typeof values[1] === 'string') {
-      return !stringCompare(values[0], values[1])
+    if (typeof values[1] === 'string') {
+      if (errorMessages.includes(values[1])) {
+        return !(values[0] instanceof Error) || values[0].message.toLowerCase() !== values[1]
+      }
+
+      if (typeof values[0] === 'string') {
+        return !stringCompare(values[0], values[1])
+      }
+
+      return true
     }
 
     return values[0] !== values[1]
@@ -312,8 +477,12 @@ const compare = {
 }
 
 function countIfEvaluate(values, operator) {
-  if (operator !== '<>' && typeof values[0] !== typeof values[1]) {
-    return false
+  if (!operator) {
+    if (values[1] === '') {
+      return values[0] === '' || values[0] === null
+    }
+
+    operator = defaultOperator
   }
 
   return compare[operator](values)

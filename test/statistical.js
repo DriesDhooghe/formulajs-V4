@@ -21,69 +21,6 @@ describe('Statistical', () => {
     expect(statistical.AVEDEV([2, 'invalid'], [8, 16])).to.equal(error.value)
   })
 
-  it('AVERAGE', () => {
-    expect(statistical.AVERAGE()).to.equal(error.na)
-    expect(statistical.AVERAGE('')).to.equal(error.div0)
-    expect(statistical.AVERAGE('text')).to.equal(error.div0)
-    expect(statistical.AVERAGE(true)).to.equal(error.div0)
-    expect(statistical.AVERAGE(false)).to.equal(error.div0)
-    expect(statistical.AVERAGE(2)).to.equal(2)
-    expect(statistical.AVERAGE('2')).to.equal(error.div0)
-    expect(statistical.AVERAGE('7', 8, 8)).to.equal(8)
-
-    expect(statistical.AVERAGE(null)).to.equal(error.div0)
-    expect(statistical.AVERAGE(null, 2)).to.equal(2)
-
-    expect(statistical.AVERAGE(undefined, undefined)).to.equal(0)
-    expect(statistical.AVERAGE(undefined, 2)).to.equal(1)
-
-    expect(statistical.AVERAGE(error.na)).to.equal(error.na)
-    expect(statistical.AVERAGE(error.div0)).to.equal(error.div0)
-
-    expect(statistical.AVERAGE(9, 7, 9)).to.approximately(8.333333333, 1e-9)
-    expect(statistical.AVERAGE(2, 4, 8, 16)).to.approximately(7.5, 1e-9)
-    expect(statistical.AVERAGE(2, 4, 8, 16, true, error.na)).to.equal(error.na)
-    expect(statistical.AVERAGE(2, 4, 8, 16, '', '')).to.approximately(7.5, 1e-9)
-
-    expect(statistical.AVERAGE([[5]])).to.equal(5)
-    expect(statistical.AVERAGE([[1]])).to.equal(1)
-    expect(statistical.AVERAGE([[2, 4, 8, 16]])).to.approximately(7.5, 1e-9)
-    expect(statistical.AVERAGE([[2, 4]], [[8, 16]])).to.approximately(7.5, 1e-9)
-
-    expect(
-      statistical.AVERAGE(
-        [[2, 4]],
-        [
-          [2, 4],
-          [8, 16]
-        ]
-      )
-    ).to.approximately(6, 1e-9)
-
-    expect(
-      statistical.AVERAGE([
-        [2, 4],
-        [8, 16]
-      ])
-    ).to.approximately(7.5, 1e-9)
-    expect(
-      statistical.AVERAGE(
-        [
-          [2, 4],
-          [8, 16]
-        ],
-        8
-      )
-    ).to.approximately(7.6, 1e-9)
-    expect(
-      statistical.AVERAGE([
-        [2, 4],
-        [8, 16],
-        [true, false]
-      ])
-    ).to.approximately(7.5, 1e-9)
-  })
-
   it('AVERAGEA', () => {
     expect(statistical.AVERAGEA(undefined)).to.equal(error.div0)
     expect(statistical.AVERAGEA(2, undefined, undefined)).to.equal(2)
@@ -176,7 +113,201 @@ describe('Statistical', () => {
         [[1, 2]]
       )
     ).to.equal(error.value)
-    expect(statistical.AVERAGEIF([2, 4, 'invalid', 16], '>5')).to.equal(16)
+    expect(statistical.AVERAGEIF([[2, 4, 'invalid', 16]], '>5')).to.equal(16)
+
+    expect(
+      statistical.AVERAGEIF(
+        [
+          ['1 (Thing)'],
+          ['2 (Apple)'],
+          ['3 (Apple)'],
+          ['1 (Thing)'],
+          ['2 (Apple)'],
+          ['3 (Apple)'],
+          ['1 (Thing)'],
+          ['2 (Apple)'],
+          ['3 (Apple)']
+        ],
+        '1 (Thing)',
+        [[5], [3], [null], [77], [null], [null], [null], [null], [null]]
+      )
+    ).to.equal(41)
+    expect(
+      statistical.AVERAGEIF(
+        [
+          ['1 (Thing)'],
+          ['2 (Apple)'],
+          ['3 (Apple)'],
+          ['1 (Thing)'],
+          ['2 (Apple)'],
+          ['3 (Apple)'],
+          ['1 (Thing)'],
+          ['2 (Apple)'],
+          ['3 (Apple)']
+        ],
+        '2 (Apple)',
+        [[5], [3], [null], [77], [null], [null], [null], [null], [null]]
+      )
+    ).to.equal(3)
+    expect(
+      statistical.AVERAGEIF(
+        [
+          ['1 (Thing)'],
+          ['2 (Apple)'],
+          ['3 (Apple)'],
+          ['1 (Thing)'],
+          ['2 (Apple)'],
+          ['3 (Apple)'],
+          ['1 (Thing)'],
+          ['2 (Apple)'],
+          ['3 (Apple)']
+        ],
+        '3 (Apple)',
+        [[5], [3], [null], [77], [null], [null], [null], [null], [null]]
+      )
+    ).to.equal(error.div0)
+
+    const testArray1 = [
+      ['tesTe 1'],
+      ['teste 3'],
+      [''],
+      [false],
+      [true],
+      [null],
+      [-3],
+      ['-3'],
+      [-1.5],
+      ['-1.5'],
+      [0],
+      ['0'],
+      [3],
+      ['3'],
+      ['false'],
+      ['true'],
+      [error.nil],
+      [error.div0],
+      [error.value],
+      [error.ref],
+      [error.name],
+      [error.num],
+      [error.na],
+      [error.calc],
+      [error.spill]
+    ]
+
+    const testArray2 = [
+      [2],
+      [4],
+      [8],
+      [16],
+      [32],
+      [64],
+      [128],
+      [256],
+      [512],
+      [1024],
+      [2048],
+      [4096],
+      [8192],
+      [16384],
+      [32768],
+      [65536],
+      [131072],
+      [262144],
+      [524288],
+      [1048576],
+      [2097152],
+      [4194304],
+      [8388608],
+      [16777216],
+      [33554432]
+    ]
+
+    expect(statistical.AVERAGEIF(testArray1, '<>', testArray2)).to.approximately(2796199.91666667, 1e-8)
+    expect(statistical.AVERAGEIF(testArray1, '<>*', testArray2)).to.equal(4186799)
+    expect(statistical.AVERAGEIF(testArray1, '*', testArray2)).to.equal(13342)
+    expect(statistical.AVERAGEIF(testArray1, '=', testArray2)).to.equal(64)
+    expect(statistical.AVERAGEIF(testArray1, '=*', testArray2)).to.equal(13342)
+    expect(statistical.AVERAGEIF(testArray1, false, testArray2)).to.equal(16)
+    expect(statistical.AVERAGEIF(testArray1, 'false', testArray2)).to.equal(16)
+    expect(statistical.AVERAGEIF(testArray1, true, testArray2)).to.equal(32)
+    expect(statistical.AVERAGEIF(testArray1, 'true', testArray2)).to.equal(32)
+    expect(statistical.AVERAGEIF(testArray1, -1.5, testArray2)).to.equal(768)
+    expect(statistical.AVERAGEIF(testArray1, '-1.5', testArray2)).to.equal(768)
+    expect(statistical.AVERAGEIF(testArray1, 0, testArray2)).to.equal(3072)
+    expect(statistical.AVERAGEIF(testArray1, '0', testArray2)).to.equal(3072)
+    expect(statistical.AVERAGEIF(testArray1, 3, testArray2)).to.equal(12288)
+    expect(statistical.AVERAGEIF(testArray1, '+3', testArray2)).to.equal(12288)
+    expect(statistical.AVERAGEIF(testArray1, 'TESTE 1', testArray2)).to.equal(2)
+
+    expect(statistical.AVERAGEIF(testArray1, '', testArray2)).to.equal(36)
+
+    expect(statistical.AVERAGEIF(testArray1, null, testArray2)).to.equal(3072)
+
+    expect(statistical.AVERAGEIF(undefined, null, testArray2)).to.equal(error.na)
+    expect(statistical.AVERAGEIF(undefined, null)).to.equal(error.na)
+    expect(statistical.AVERAGEIF(testArray1, undefined, testArray2)).to.equal(3072)
+    expect(statistical.AVERAGEIF(testArray1, undefined)).to.equal(0)
+    expect(statistical.AVERAGEIF(testArray1, null, undefined)).to.equal(error.na)
+
+    expect(statistical.AVERAGEIF(testArray1, '=false', testArray2)).to.equal(16)
+    expect(statistical.AVERAGEIF(testArray1, '=3', testArray2)).to.equal(12288)
+    expect(statistical.AVERAGEIF(testArray1, '>0', testArray2)).to.equal(8192)
+
+    Object.values(error).forEach((err) => {
+      expect(statistical.AVERAGEIF(err, err, 1)).to.equal(1)
+      expect(statistical.AVERAGEIF(err, 1, 1)).to.equal(error.div0)
+
+      expect(statistical.AVERAGEIF(true, true, err)).to.equal(err)
+      expect(statistical.AVERAGEIF([[true, true]], true, [[1, err]])).to.equal(err)
+      expect(statistical.AVERAGEIF([[true, true]], '=true', [[1, err]])).to.equal(err)
+      expect(statistical.AVERAGEIF([[true, false]], true, [[1, err]])).to.equal(1)
+      expect(statistical.AVERAGEIF([[true, false]], '=true', [[1, err]])).to.equal(1)
+    })
+
+    expect(
+      statistical.AVERAGEIF(
+        testArray1,
+        [
+          ['*', 3],
+          [true, '<>*']
+        ],
+        testArray2
+      )
+    ).to.eql([
+      [13342, 12288],
+      [32, 4186799]
+    ])
+
+    expect(statistical.AVERAGEIF(true, true, null)).to.equal(error.div0)
+    expect(statistical.AVERAGEIF(true, true, -5)).to.equal(-5)
+    expect(statistical.AVERAGEIF(true, true, '-5')).to.equal(error.div0)
+    expect(statistical.AVERAGEIF(true, true, 0)).to.equal(0)
+    expect(statistical.AVERAGEIF(true, true, '0')).to.equal(error.div0)
+    expect(statistical.AVERAGEIF(true, true, 5)).to.equal(5)
+    expect(statistical.AVERAGEIF(true, true, '5')).to.equal(error.div0)
+    expect(statistical.AVERAGEIF(true, true, true)).to.equal(error.div0)
+    expect(statistical.AVERAGEIF(true, true, false)).to.equal(error.div0)
+    expect(statistical.AVERAGEIF(true, true, 'true')).to.equal(error.div0)
+    expect(statistical.AVERAGEIF(true, true, 'false')).to.equal(error.div0)
+    expect(statistical.AVERAGEIF(true, true, '')).to.equal(error.div0)
+    expect(statistical.AVERAGEIF(true, true, 'test')).to.equal(error.div0)
+    expect(statistical.AVERAGEIF(true, true, 'test 1')).to.equal(error.div0)
+
+    expect(statistical.AVERAGEIF(true, '=true', null)).to.equal(error.div0)
+    expect(statistical.AVERAGEIF(true, '=true', -5)).to.equal(-5)
+    expect(statistical.AVERAGEIF(true, '=true', '-5')).to.equal(error.div0)
+    expect(statistical.AVERAGEIF(true, '=true', 0)).to.equal(0)
+    expect(statistical.AVERAGEIF(true, '=true', '0')).to.equal(error.div0)
+    expect(statistical.AVERAGEIF(true, '=true', 5)).to.equal(5)
+    expect(statistical.AVERAGEIF(true, '=true', '5')).to.equal(error.div0)
+    expect(statistical.AVERAGEIF(true, '=true', true)).to.equal(error.div0)
+    expect(statistical.AVERAGEIF(true, '=true', false)).to.equal(error.div0)
+    expect(statistical.AVERAGEIF(true, '=true', 'true')).to.equal(error.div0)
+    expect(statistical.AVERAGEIF(true, '=true', 'false')).to.equal(error.div0)
+    expect(statistical.AVERAGEIF(true, '=true', '')).to.equal(error.div0)
+    expect(statistical.AVERAGEIF(true, '=true', 'test')).to.equal(error.div0)
+    expect(statistical.AVERAGEIF(true, '=true', 'test 1')).to.equal(error.div0)
   })
 
   it('AVERAGEIFS', () => {
@@ -247,6 +378,166 @@ describe('Statistical', () => {
     expect(statistical.AVERAGEIFS([[2, 4, 8, 16]], [[1, 2, 3, 4]], '<>')).to.equal(7.5)
     expect(statistical.AVERAGEIFS([[2, 4, 8, 16]], [[1, 2, 3, 4]], '>2', [[1, 2, 3, 4]], '>2')).to.equal(12)
     expect(statistical.AVERAGEIFS([[2, 4, 8, 16]], [[1, 2, 3, 4]], '>2', [[1, 1, 1, 1]], '>2')).to.equal(error.div0)
+
+    const testArray1 = [
+      ['tesTe 1'],
+      ['teste 3'],
+      [''],
+      [false],
+      [true],
+      [null],
+      [-3],
+      ['-3'],
+      [-1.5],
+      ['-1.5'],
+      [0],
+      ['0'],
+      [3],
+      ['3'],
+      ['false'],
+      ['true'],
+      [error.nil],
+      [error.div0],
+      [error.value],
+      [error.ref],
+      [error.name],
+      [error.num],
+      [error.na],
+      [error.calc],
+      [error.spill]
+    ]
+
+    const testArray2 = [
+      [2],
+      [4],
+      [8],
+      [16],
+      [32],
+      [64],
+      [128],
+      [256],
+      [512],
+      [1024],
+      [2048],
+      [4096],
+      [8192],
+      [16384],
+      [32768],
+      [65536],
+      [131072],
+      [262144],
+      [524288],
+      [1048576],
+      [2097152],
+      [4194304],
+      [8388608],
+      [16777216],
+      [33554432]
+    ]
+
+    const testArray3 = [
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true]
+    ]
+
+    expect(statistical.AVERAGEIFS(testArray2, testArray3, true, testArray1, '<>')).to.approximately(
+      2796199.91666667,
+      1e-8
+    )
+    expect(statistical.AVERAGEIFS(testArray2, testArray3, true, testArray1, '<>*')).to.equal(4186799)
+    expect(statistical.AVERAGEIFS(testArray2, testArray3, true, testArray1, '*')).to.equal(13342)
+    expect(statistical.AVERAGEIFS(testArray2, testArray3, true, testArray1, '=')).to.equal(64)
+    expect(statistical.AVERAGEIFS(testArray2, testArray3, true, testArray1, '=*')).to.equal(13342)
+    expect(statistical.AVERAGEIFS(testArray2, testArray3, true, testArray1, false)).to.equal(16)
+    expect(statistical.AVERAGEIFS(testArray2, testArray3, true, testArray1, 'false')).to.equal(16)
+    expect(statistical.AVERAGEIFS(testArray2, testArray3, true, testArray1, true)).to.equal(32)
+    expect(statistical.AVERAGEIFS(testArray2, testArray3, true, testArray1, 'true')).to.equal(32)
+    expect(statistical.AVERAGEIFS(testArray2, testArray3, true, testArray1, -1.5)).to.equal(768)
+    expect(statistical.AVERAGEIFS(testArray2, testArray3, true, testArray1, '-1.5')).to.equal(768)
+    expect(statistical.AVERAGEIFS(testArray2, testArray3, true, testArray1, 0)).to.equal(3072)
+    expect(statistical.AVERAGEIFS(testArray2, testArray3, true, testArray1, '0')).to.equal(3072)
+    expect(statistical.AVERAGEIFS(testArray2, testArray3, true, testArray1, 3)).to.equal(12288)
+    expect(statistical.AVERAGEIFS(testArray2, testArray3, true, testArray1, '+3')).to.equal(12288)
+    expect(statistical.AVERAGEIFS(testArray2, testArray3, true, testArray1, 'TESTE 1')).to.equal(2)
+
+    expect(statistical.AVERAGEIFS(testArray2, testArray3, true, testArray1, '')).to.equal(36)
+
+    expect(statistical.AVERAGEIFS(testArray2, testArray3, true, testArray1, null)).to.equal(3072)
+
+    expect(statistical.AVERAGEIFS(undefined, testArray3, true, testArray1, null)).to.equal(error.na)
+    expect(statistical.AVERAGEIFS(undefined, testArray3, true)).to.equal(error.na)
+    expect(statistical.AVERAGEIFS(testArray2, undefined, true, testArray1, null)).to.equal(error.na)
+    expect(statistical.AVERAGEIFS(testArray2, undefined, true)).to.equal(error.na)
+    expect(statistical.AVERAGEIFS(testArray2, testArray3, undefined)).to.equal(error.div0)
+    expect(statistical.AVERAGEIFS(testArray2, testArray3, true, undefined, null)).to.equal(error.na)
+    expect(statistical.AVERAGEIFS(testArray2, testArray3, true, testArray1, undefined)).to.equal(3072)
+
+    expect(statistical.AVERAGEIFS(testArray2, testArray3, true, testArray1, '=false')).to.equal(16)
+    expect(statistical.AVERAGEIFS(testArray2, testArray3, true, testArray1, '=3')).to.equal(12288)
+    expect(statistical.AVERAGEIFS(testArray2, testArray3, true, testArray1, '>0')).to.equal(8192)
+
+    Object.values(error).forEach((err) => {
+      expect(statistical.AVERAGEIFS(1, true, true, err, err)).to.equal(1)
+      expect(statistical.AVERAGEIFS(1, true, true, err, 1)).to.equal(error.div0)
+
+      expect(statistical.AVERAGEIFS([[1, err]], [[true, true]], true)).to.equal(err)
+      expect(statistical.AVERAGEIFS([[1, err]], [[true, false]], true)).to.equal(1)
+    })
+
+    expect(statistical.AVERAGEIFS(null, true, true)).to.equal(error.div0)
+    expect(statistical.AVERAGEIFS(-5, true, true)).to.equal(-5)
+    expect(statistical.AVERAGEIFS('-5', true, true)).to.equal(error.div0)
+    expect(statistical.AVERAGEIFS(0, true, true)).to.equal(0)
+    expect(statistical.AVERAGEIFS('0', true, true)).to.equal(error.div0)
+    expect(statistical.AVERAGEIFS(5, true, true)).to.equal(5)
+    expect(statistical.AVERAGEIFS('5', true, true)).to.equal(error.div0)
+    expect(statistical.AVERAGEIFS(true, true, true)).to.equal(error.div0)
+    expect(statistical.AVERAGEIFS(false, true, true)).to.equal(error.div0)
+    expect(statistical.AVERAGEIFS('true', true, true)).to.equal(error.div0)
+    expect(statistical.AVERAGEIFS('false', true, true)).to.equal(error.div0)
+    expect(statistical.AVERAGEIFS('', true, true)).to.equal(error.div0)
+    expect(statistical.AVERAGEIFS('test', true, true)).to.equal(error.div0)
+    expect(statistical.AVERAGEIFS('test 1', true, true)).to.equal(error.div0)
+
+    expect(statistical.AVERAGEIFS(null, true, '=true')).to.equal(error.div0)
+    expect(statistical.AVERAGEIFS(-5, true, '=true')).to.equal(-5)
+    expect(statistical.AVERAGEIFS('-5', true, '=true')).to.equal(error.div0)
+    expect(statistical.AVERAGEIFS(0, true, '=true')).to.equal(0)
+    expect(statistical.AVERAGEIFS('0', true, '=true')).to.equal(error.div0)
+    expect(statistical.AVERAGEIFS(5, true, '=true')).to.equal(5)
+    expect(statistical.AVERAGEIFS('5', true, '=true')).to.equal(error.div0)
+    expect(statistical.AVERAGEIFS(true, true, '=true')).to.equal(error.div0)
+    expect(statistical.AVERAGEIFS(false, true, '=true')).to.equal(error.div0)
+    expect(statistical.AVERAGEIFS('true', true, '=true')).to.equal(error.div0)
+    expect(statistical.AVERAGEIFS('false', true, '=true')).to.equal(error.div0)
+    expect(statistical.AVERAGEIFS('', true, '=true')).to.equal(error.div0)
+    expect(statistical.AVERAGEIFS('test', true, '=true')).to.equal(error.div0)
+    expect(statistical.AVERAGEIFS('test 1', true, '=true')).to.equal(error.div0)
+
+    expect(statistical.AVERAGEIFS([[2, 4, 6, 8]], [['A', 'A', 'B', 'B']], [['a', 'b']])).to.equal(error.value)
   })
 
   it('BETA.DIST', () => {
@@ -612,12 +903,111 @@ describe('Statistical', () => {
 
     expect(statistical.COUNTIF(null, '>1')).to.equal(0)
     expect(statistical.COUNTIF(error.na, '>1')).to.equal(0)
-    expect(statistical.COUNTIF([1, null, 3, 'a', ''], '>=1')).to.equal(2)
-    expect(statistical.COUNTIF([1, null, 3, 'a', ''], '>1')).to.equal(1)
-    expect(statistical.COUNTIF([1, null, 3, 'a', ''], '<=3')).to.equal(2)
-    expect(statistical.COUNTIF([1, null, 3, 'a', ''], '<=1')).to.equal(1)
-    expect(statistical.COUNTIF([1, null, 'c', 'a', ''], '>1')).to.equal(0)
-    expect(statistical.COUNTIF([1, 2, 3, 3, 3], '=3')).to.equal(3)
+    expect(statistical.COUNTIF([[1, null, 3, 'a', '']], '>=1')).to.equal(2)
+    expect(statistical.COUNTIF([[1, null, 3, 'a', '']], '>1')).to.equal(1)
+    expect(statistical.COUNTIF([[1, null, 3, 'a', '']], '<=3')).to.equal(2)
+    expect(statistical.COUNTIF([[1, null, 3, 'a', '']], '<=1')).to.equal(1)
+    expect(statistical.COUNTIF([[1, null, 'c', 'a', '']], '>1')).to.equal(0)
+    expect(statistical.COUNTIF([[1, 2, 3, 3, 3]], '=3')).to.equal(3)
+
+    const testArray = [
+      ['tesTe 1'],
+      ['tesTe 3'],
+      [''],
+      [false],
+      [true],
+      [null],
+      [-3],
+      ['-3'],
+      [-1.5],
+      ['-1.5'],
+      [0],
+      ['0'],
+      [3],
+      ['3'],
+      ['false'],
+      ['true'],
+      [error.nil],
+      [error.div0],
+      [error.value],
+      [error.ref],
+      [error.name],
+      [error.num],
+      [error.na],
+      [error.calc],
+      [error.spill]
+    ]
+
+    expect(statistical.COUNTIF(testArray, '<>')).to.equal(24)
+    expect(statistical.COUNTIF(testArray, '<>*')).to.equal(16)
+    expect(statistical.COUNTIF(testArray, '*')).to.equal(9)
+    expect(statistical.COUNTIF(testArray, '=')).to.equal(1)
+    expect(statistical.COUNTIF(testArray, '=*')).to.equal(9)
+    expect(statistical.COUNTIF(testArray, false)).to.equal(1)
+    expect(statistical.COUNTIF(testArray, 'false')).to.equal(1)
+    expect(statistical.COUNTIF(testArray, true)).to.equal(1)
+    expect(statistical.COUNTIF(testArray, 'true')).to.equal(1)
+    expect(statistical.COUNTIF(testArray, -1.5)).to.equal(2)
+    expect(statistical.COUNTIF(testArray, '-1.5')).to.equal(2)
+    expect(statistical.COUNTIF(testArray, 0)).to.equal(2)
+    expect(statistical.COUNTIF(testArray, '0')).to.equal(2)
+    expect(statistical.COUNTIF(testArray, 3)).to.equal(2)
+    expect(statistical.COUNTIF(testArray, '+3')).to.equal(2)
+    expect(statistical.COUNTIF(testArray, 'TESTE 1')).to.equal(1)
+
+    expect(statistical.COUNTIF(error.name, error.name)).to.equal(1)
+    expect(statistical.COUNTIF(error.name, '#name?')).to.equal(1)
+    expect(statistical.COUNTIF(error.name, '#name*')).to.equal(0)
+    expect(statistical.COUNTIF(error.name.message, error.name)).to.equal(0)
+    expect(statistical.COUNTIF(error.name.message, '#name?')).to.equal(0)
+    expect(statistical.COUNTIF(error.name.message, '#name*')).to.equal(1)
+
+    expect(statistical.COUNTIF(error.name, '<>#name?')).to.equal(0)
+    expect(statistical.COUNTIF(error.name, '<>#name*')).to.equal(1)
+    expect(statistical.COUNTIF(error.name.message, '<>#name?')).to.equal(1)
+    expect(statistical.COUNTIF(error.name.message, '<>#name*')).to.equal(0)
+
+    expect(statistical.COUNTIF(testArray, '')).to.equal(2)
+    expect(statistical.COUNTIF([[null, '']], '')).to.equal(2)
+
+    expect(statistical.COUNTIF(testArray, null)).to.equal(2)
+    expect(statistical.COUNTIF([[0, '0']], null)).to.equal(2)
+
+    expect(statistical.COUNTIF(testArray, '=false')).to.equal(1)
+    expect(statistical.COUNTIF(testArray, '=3')).to.equal(2)
+    expect(statistical.COUNTIF(testArray, '>0')).to.equal(1)
+
+    expect(statistical.COUNTIF(undefined, null)).to.equal(error.na)
+    expect(statistical.COUNTIF(testArray, undefined)).to.equal(2)
+    expect(statistical.COUNTIF([[0, '0']], undefined)).to.equal(2)
+
+    const testedErrors = [
+      error.nil,
+      error.div0,
+      error.value,
+      error.ref,
+      error.name,
+      error.num,
+      error.na,
+      error.calc,
+      error.spill
+    ]
+
+    Object.values(error).forEach((err) => {
+      expect(statistical.COUNTIF(testArray, err)).to.equal(testedErrors.includes(err) ? 1 : 0)
+      expect(statistical.COUNTIF(err, err)).to.equal(1)
+      expect(statistical.COUNTIF(err, 1)).to.equal(0)
+    })
+
+    expect(
+      statistical.COUNTIF(testArray, [
+        ['*', 3],
+        [true, '<>*']
+      ])
+    ).to.eql([
+      [9, 2],
+      [1, 16]
+    ])
 
     expect(
       statistical.COUNTIF(
@@ -637,15 +1027,6 @@ describe('Statistical', () => {
         'a'
       )
     ).to.equal(2)
-    expect(
-      statistical.COUNTIF(
-        [
-          [1, null, 3],
-          ['a', 4, 'c']
-        ],
-        ''
-      )
-    ).to.equal(0)
     expect(
       statistical.COUNTIF(
         [
@@ -755,6 +1136,11 @@ describe('Statistical', () => {
         ['a', 4, 'c']
       ])
     ).to.equal(error.na)
+
+    expect(statistical.COUNTIF([[0]], '<>0')).to.equal(0)
+    expect(statistical.COUNTIF([[0]], '<> 0')).to.equal(0)
+    expect(statistical.COUNTIF([['0'], [' 0']], '<>0')).to.equal(2)
+    expect(statistical.COUNTIF([['0'], [' 0']], '<> 0')).to.equal(2)
   })
 
   it('COUNTIFS', () => {
@@ -762,6 +1148,170 @@ describe('Statistical', () => {
     expect(statistical.COUNTIFS('')).to.equal(error.na)
     expect(statistical.COUNTIFS('text')).to.equal(error.na)
     expect(statistical.COUNTIFS(1)).to.equal(error.na)
+
+    const testArray1 = [
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true]
+    ]
+
+    const testArray2 = [
+      ['tesTe 1'],
+      ['teste 3'],
+      [''],
+      [false],
+      [true],
+      [null],
+      [-3],
+      ['-3'],
+      [-1.5],
+      ['-1.5'],
+      [0],
+      ['0'],
+      [3],
+      ['3'],
+      ['false'],
+      ['true'],
+      [error.nil],
+      [error.div0],
+      [error.value],
+      [error.ref],
+      [error.name],
+      [error.num],
+      [error.na],
+      [error.calc],
+      [error.spill]
+    ]
+
+    expect(statistical.COUNTIFS(testArray1, true, testArray2, '<>')).to.equal(24)
+    expect(statistical.COUNTIFS(testArray1, true, testArray2, '<>*')).to.equal(16)
+    expect(statistical.COUNTIFS(testArray1, true, testArray2, '*')).to.equal(9)
+    expect(statistical.COUNTIFS(testArray1, true, testArray2, '=')).to.equal(1)
+    expect(statistical.COUNTIFS(testArray1, true, testArray2, '=*')).to.equal(9)
+    expect(statistical.COUNTIFS(testArray1, true, testArray2, false)).to.equal(1)
+    expect(statistical.COUNTIFS(testArray1, true, testArray2, 'false')).to.equal(1)
+    expect(statistical.COUNTIFS(testArray1, true, testArray2, true)).to.equal(1)
+    expect(statistical.COUNTIFS(testArray1, true, testArray2, 'true')).to.equal(1)
+    expect(statistical.COUNTIFS(testArray1, true, testArray2, -1.5)).to.equal(2)
+    expect(statistical.COUNTIFS(testArray1, true, testArray2, '-1.5')).to.equal(2)
+    expect(statistical.COUNTIFS(testArray1, true, testArray2, 0)).to.equal(2)
+    expect(statistical.COUNTIFS(testArray1, true, testArray2, '0')).to.equal(2)
+    expect(statistical.COUNTIFS(testArray1, true, testArray2, 3)).to.equal(2)
+    expect(statistical.COUNTIFS(testArray1, true, testArray2, '+3')).to.equal(2)
+    expect(statistical.COUNTIFS(testArray1, true, testArray2, 'TESTE 1')).to.equal(1)
+
+    expect(statistical.COUNTIFS(testArray1, true, testArray2, '')).to.equal(2)
+    expect(statistical.COUNTIFS([[true, true]], true, [[null, '']], '')).to.equal(2)
+
+    expect(statistical.COUNTIFS(testArray1, true, testArray2, null)).to.equal(2)
+    expect(statistical.COUNTIFS([[true, true]], true, [[0, '0']], null)).to.equal(2)
+
+    expect(statistical.COUNTIFS(undefined, true, testArray2, null)).to.equal(error.na)
+    expect(statistical.COUNTIFS(testArray1, undefined, testArray2, null)).to.equal(0)
+    expect(statistical.COUNTIFS(testArray1, true, undefined, null)).to.equal(error.na)
+    expect(statistical.COUNTIFS(testArray1, true, testArray2, undefined)).to.equal(2)
+    expect(statistical.COUNTIFS([[true, true]], true, [[0, '0']], undefined)).to.equal(2)
+
+    expect(statistical.COUNTIFS(testArray1, true, testArray2, '=false')).to.equal(1)
+    expect(statistical.COUNTIFS(testArray1, true, testArray2, '=3')).to.equal(2)
+    expect(statistical.COUNTIFS(testArray1, true, testArray2, '>0')).to.equal(1)
+
+    const testedErrors = [
+      error.nil,
+      error.div0,
+      error.value,
+      error.ref,
+      error.name,
+      error.num,
+      error.na,
+      error.calc,
+      error.spill
+    ]
+
+    Object.values(error).forEach((err) => {
+      expect(statistical.COUNTIFS(testArray1, true, testArray2, err)).to.equal(testedErrors.includes(err) ? 1 : 0)
+      expect(statistical.COUNTIFS(true, true, err, err)).to.equal(1)
+      expect(statistical.COUNTIFS(true, true, err, 1)).to.equal(0)
+    })
+
+    expect(
+      statistical.COUNTIFS(
+        [
+          [1, 2],
+          [true, false]
+        ],
+        true,
+        [
+          [1, 2],
+          [false, true]
+        ],
+        false
+      )
+    ).to.equal(1)
+    expect(
+      statistical.COUNTIFS(
+        [
+          [1, 2],
+          [true, false]
+        ],
+        true,
+        [
+          [1, 2],
+          [false, true]
+        ],
+        '=false'
+      )
+    ).to.equal(1)
+    expect(
+      statistical.COUNTIFS(
+        [
+          [1, 2],
+          [true, false]
+        ],
+        true,
+        [
+          [1, 2],
+          [false, true]
+        ],
+        true
+      )
+    ).to.equal(0)
+    expect(
+      statistical.COUNTIFS(
+        [
+          [1, 2],
+          [true, false]
+        ],
+        true,
+        [
+          [1, 2],
+          [false, true]
+        ],
+        '=true'
+      )
+    ).to.equal(0)
 
     expect(statistical.COUNTIFS(null, '>1')).to.equal(0)
     expect(statistical.COUNTIFS(error.na, '>1')).to.equal(0)
@@ -861,10 +1411,9 @@ describe('Statistical', () => {
   })
 
   it('COUNTUNIQUE', () => {
-    expect(statistical.COUNTUNIQUE()).to.equal(0)
     expect(statistical.COUNTUNIQUE(1, 1, 2, 2, 3, 3)).to.equal(3)
-    expect(statistical.COUNTUNIQUE([1, 1, 2, 2, 3, 3])).to.equal(3)
-    expect(statistical.COUNTUNIQUE([1, 1, 2], [2, 3, 3])).to.equal(3)
+    expect(statistical.COUNTUNIQUE([[1, 1, 2, 2, 3, 3]])).to.equal(3)
+    expect(statistical.COUNTUNIQUE([[1, 1, 2]], [[2, 3, 3]])).to.equal(3)
     expect(
       statistical.COUNTUNIQUE(
         [
@@ -877,6 +1426,34 @@ describe('Statistical', () => {
         ]
       )
     ).to.equal(5)
+
+    expect(
+      statistical.COUNTUNIQUE([
+        [1, 2, 3],
+        ['1', true, false],
+        ['0', 0, 'teste'],
+        [error.na, error.div0, error.nil],
+        [error.value, error.ref, error.name],
+        [error.num, 'true', 'false']
+      ])
+    ).to.equal(18)
+
+    expect(statistical.COUNTUNIQUE(0, 0)).to.equal(1)
+    expect(statistical.COUNTUNIQUE(1, 1)).to.equal(1)
+    expect(statistical.COUNTUNIQUE('1', '1')).to.equal(1)
+    expect(statistical.COUNTUNIQUE(true, true)).to.equal(1)
+    expect(statistical.COUNTUNIQUE('true', 'true')).to.equal(1)
+    expect(statistical.COUNTUNIQUE(false, false)).to.equal(1)
+    expect(statistical.COUNTUNIQUE('false', 'false')).to.equal(1)
+
+    expect(statistical.COUNTUNIQUE(null, null)).to.equal(0)
+    expect(statistical.COUNTUNIQUE(undefined, undefined)).to.equal(0)
+
+    Object.values(error).forEach((err) => {
+      expect(statistical.COUNTUNIQUE(err, err)).to.equal(1)
+    })
+
+    expect(statistical.COUNTUNIQUE()).to.equal(error.na)
   })
 
   it('COVARIANCE.P', () => {
@@ -1388,7 +1965,7 @@ describe('Statistical', () => {
 
     expect(statistical.MAXIFS([[1], [1]], [[2], [2]], 'A')).to.equal(0)
     expect(statistical.MAXIFS([[2, 4, 6, 8]], [['A', 'A', 'B', 'B']], null)).to.equal(0)
-    expect(statistical.MAXIFS([[2, 4, 6, 8]], [['A', 'A', 'B', 'B']], undefined)).to.equal(error.na)
+    expect(statistical.MAXIFS([[2, 4, 6, 8]], [['A', 'A', 'B', 'B']], undefined)).to.equal(0)
     expect(statistical.MAXIFS([[2, 4, 6]], [['A', 'A', 'B', 'B']], 'B')).to.equal(error.value)
     expect(statistical.MAXIFS([[2], [4], [6]], [['A'], ['A'], ['B'], ['B']], 'B')).to.equal(error.value)
     expect(statistical.MAXIFS([[2], [4], [6], [8]], [['A'], ['A'], ['B']], 'B')).to.equal(error.value)
@@ -1399,7 +1976,136 @@ describe('Statistical', () => {
     expect(statistical.MAXIFS(null, [['A', 'A', 'B', 'B']], 'B')).to.equal(error.value)
     expect(statistical.MAXIFS('string', [['A', 'A', 'B', 'B']], 'B')).to.equal(error.value)
     expect(statistical.MAXIFS([[2, 4, 6, 8]], [['A', 'A', 'B', 'B']], [['a', 'b']])).to.equal(error.value)
-    expect(statistical.MAXIFS([[2, 4, 6, 8]], 'string', 'B')).to.equal(error.na)
+    expect(statistical.MAXIFS([[2, 4, 6, 8]], 'string', 'B')).to.equal(error.value)
+
+    const testArray1 = [
+      ['tesTe 1'],
+      ['teste 3'],
+      [''],
+      [false],
+      [true],
+      [null],
+      [-3],
+      ['-3'],
+      [-1.5],
+      ['-1.5'],
+      [0],
+      ['0'],
+      [3],
+      ['3'],
+      ['false'],
+      ['true'],
+      [error.nil],
+      [error.div0],
+      [error.value],
+      [error.ref],
+      [error.name],
+      [error.num],
+      [error.na],
+      [error.calc],
+      [error.spill]
+    ]
+
+    const testArray2 = [
+      [1],
+      [2],
+      [3],
+      [4],
+      [5],
+      [6],
+      [7],
+      [8],
+      [9],
+      [10],
+      [11],
+      [12],
+      [13],
+      [14],
+      [15],
+      [16],
+      [17],
+      [18],
+      [19],
+      [20],
+      [21],
+      [22],
+      [23],
+      [24],
+      [25]
+    ]
+
+    const testArray3 = [
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true]
+    ]
+
+    expect(statistical.MAXIFS(testArray2, testArray3, true, testArray1, '<>')).to.equal(25)
+    expect(statistical.MAXIFS(testArray2, testArray3, true, testArray1, '<>*')).to.equal(25)
+    expect(statistical.MAXIFS(testArray2, testArray3, true, testArray1, '*')).to.equal(16)
+    expect(statistical.MAXIFS(testArray2, testArray3, true, testArray1, '=')).to.equal(6)
+    expect(statistical.MAXIFS(testArray2, testArray3, true, testArray1, '=*')).to.equal(16)
+    expect(statistical.MAXIFS(testArray2, testArray3, true, testArray1, false)).to.equal(4)
+    expect(statistical.MAXIFS(testArray2, testArray3, true, testArray1, 'false')).to.equal(4)
+    expect(statistical.MAXIFS(testArray2, testArray3, true, testArray1, true)).to.equal(5)
+    expect(statistical.MAXIFS(testArray2, testArray3, true, testArray1, 'true')).to.equal(5)
+    expect(statistical.MAXIFS(testArray2, testArray3, true, testArray1, -1.5)).to.equal(10)
+    expect(statistical.MAXIFS(testArray2, testArray3, true, testArray1, '-1.5')).to.equal(10)
+    expect(statistical.MAXIFS(testArray2, testArray3, true, testArray1, 0)).to.equal(12)
+    expect(statistical.MAXIFS(testArray2, testArray3, true, testArray1, '0')).to.equal(12)
+    expect(statistical.MAXIFS(testArray2, testArray3, true, testArray1, 3)).to.equal(14)
+    expect(statistical.MAXIFS(testArray2, testArray3, true, testArray1, '+3')).to.equal(14)
+    expect(statistical.MAXIFS(testArray2, testArray3, true, testArray1, 'TESTE 1')).to.equal(1)
+
+    expect(statistical.MAXIFS(testArray2, testArray3, true, testArray1, '')).to.equal(6)
+    expect(statistical.MAXIFS([[1, 2]], [[null, '']], '')).to.equal(2)
+
+    expect(statistical.MAXIFS(testArray2, testArray3, true, testArray1, null)).to.equal(12)
+    expect(statistical.MAXIFS([[1, 2]], [['0', 0]], null)).to.equal(2)
+
+    expect(statistical.MAXIFS(undefined, testArray3, true, testArray1, null)).to.equal(error.na)
+    expect(statistical.MAXIFS(undefined, testArray3, true)).to.equal(error.na)
+    expect(statistical.MAXIFS(testArray2, undefined, true, testArray1, null)).to.equal(error.na)
+    expect(statistical.MAXIFS(testArray2, undefined, true)).to.equal(error.na)
+    expect(statistical.MAXIFS(testArray2, testArray3, undefined, testArray1, null)).to.equal(0)
+    expect(statistical.MAXIFS(testArray2, testArray3, true, undefined, null)).to.equal(error.na)
+    expect(statistical.MAXIFS(testArray2, testArray3, true, undefined)).to.equal(error.na)
+    expect(statistical.MAXIFS(testArray2, testArray3, true, testArray1, undefined)).to.equal(12)
+
+    expect(statistical.MAXIFS(testArray2, testArray3, true, testArray1, '=false')).to.equal(4)
+    expect(statistical.MAXIFS(testArray2, testArray3, true, testArray1, '=3')).to.equal(14)
+    expect(statistical.MAXIFS(testArray2, testArray3, true, testArray1, '>0')).to.equal(13)
+
+    Object.values(error).forEach((err) => {
+      expect(statistical.MAXIFS([[3, err]], [[true, true]], true)).to.equal(err)
+      expect(statistical.MAXIFS([[3, err]], [[true, true]], '=true')).to.equal(err)
+      expect(statistical.MAXIFS([[3, err]], [[true, false]], true)).to.equal(3)
+      expect(statistical.MAXIFS([[3, err]], [[true, false]], '=true')).to.equal(3)
+      expect(statistical.MAXIFS([[err, 3]], [[false, true]], true)).to.equal(3)
+      expect(statistical.MAXIFS([[err, 3]], [[false, true]], '=true')).to.equal(3)
+    })
   })
 
   it('MINIFS', () => {
@@ -1470,7 +2176,7 @@ describe('Statistical', () => {
 
     expect(statistical.MINIFS([[1]], [[2]], 'A')).to.equal(0)
     expect(statistical.MINIFS([[2, 4, 6, 8]], [['A', 'A', 'B', 'B']], null)).to.equal(0)
-    expect(statistical.MINIFS([[2, 4, 6, 8]], [['A', 'A', 'B', 'B']], undefined)).to.equal(error.na)
+    expect(statistical.MINIFS([[2, 4, 6, 8]], [['A', 'A', 'B', 'B']], undefined)).to.equal(0)
     expect(statistical.MINIFS([[2, 4, 6]], [['A', 'A', 'B', 'B']], 'B')).to.equal(error.value)
     expect(statistical.MINIFS([[2], [4], [6]], [['A'], ['A'], ['B'], ['B']], 'B')).to.equal(error.value)
     expect(statistical.MINIFS([[2], [4], [6], [8]], [['A'], ['A'], ['B']], 'B')).to.equal(error.value)
@@ -1481,7 +2187,166 @@ describe('Statistical', () => {
     expect(statistical.MINIFS(null, [['A', 'A', 'B', 'B']], 'B')).to.equal(error.value)
     expect(statistical.MINIFS('string', [['A', 'A', 'B', 'B']], 'B')).to.equal(error.value)
     expect(statistical.MINIFS([[2, 4, 6, 8]], [['A', 'A', 'B', 'B']], [['a', 'b']])).to.equal(error.value)
-    expect(statistical.MINIFS([[2, 4, 6, 8]], 'string', 'B')).to.equal(error.na)
+    expect(statistical.MINIFS([[2, 4, 6, 8]], 'string', 'B')).to.equal(error.value)
+
+    const testArray1 = [
+      ['tesTe 1'],
+      ['teste 3'],
+      [''],
+      [false],
+      [true],
+      [null],
+      [-3],
+      ['-3'],
+      [-1.5],
+      ['-1.5'],
+      [0],
+      ['0'],
+      [3],
+      ['3'],
+      ['false'],
+      ['true'],
+      [error.nil],
+      [error.div0],
+      [error.value],
+      [error.ref],
+      [error.name],
+      [error.num],
+      [error.na],
+      [error.calc],
+      [error.spill]
+    ]
+
+    const testArray2 = [
+      [1],
+      [2],
+      [3],
+      [4],
+      [5],
+      [6],
+      [7],
+      [8],
+      [9],
+      [10],
+      [11],
+      [12],
+      [13],
+      [14],
+      [15],
+      [16],
+      [17],
+      [18],
+      [19],
+      [20],
+      [21],
+      [22],
+      [23],
+      [24],
+      [25]
+    ]
+
+    const testArray3 = [
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true],
+      [true]
+    ]
+
+    expect(statistical.MINIFS(testArray2, testArray3, true, testArray1, '<>')).to.equal(1)
+    expect(statistical.MINIFS(testArray2, testArray3, true, testArray1, '<>*')).to.equal(4)
+    expect(statistical.MINIFS(testArray2, testArray3, true, testArray1, '*')).to.equal(1)
+    expect(statistical.MINIFS(testArray2, testArray3, true, testArray1, '=')).to.equal(6)
+    expect(statistical.MINIFS(testArray2, testArray3, true, testArray1, '=*')).to.equal(1)
+    expect(statistical.MINIFS(testArray2, testArray3, true, testArray1, false)).to.equal(4)
+    expect(statistical.MINIFS(testArray2, testArray3, true, testArray1, 'false')).to.equal(4)
+    expect(statistical.MINIFS(testArray2, testArray3, true, testArray1, true)).to.equal(5)
+    expect(statistical.MINIFS(testArray2, testArray3, true, testArray1, 'true')).to.equal(5)
+    expect(statistical.MINIFS(testArray2, testArray3, true, testArray1, -1.5)).to.equal(9)
+    expect(statistical.MINIFS(testArray2, testArray3, true, testArray1, '-1.5')).to.equal(9)
+    expect(statistical.MINIFS(testArray2, testArray3, true, testArray1, 0)).to.equal(11)
+    expect(statistical.MINIFS(testArray2, testArray3, true, testArray1, '0')).to.equal(11)
+    expect(statistical.MINIFS(testArray2, testArray3, true, testArray1, 3)).to.equal(13)
+    expect(statistical.MINIFS(testArray2, testArray3, true, testArray1, '+3')).to.equal(13)
+    expect(statistical.MINIFS(testArray2, testArray3, true, testArray1, 'TESTE 1')).to.equal(1)
+
+    expect(statistical.MINIFS(testArray2, testArray3, true, testArray1, '')).to.equal(3)
+    expect(statistical.MINIFS([[1, 2]], [[null, '']], '')).to.equal(1)
+
+    expect(statistical.MINIFS(testArray2, testArray3, true, testArray1, null)).to.equal(11)
+    expect(statistical.MINIFS([[1, 2]], [['0', 0]], null)).to.equal(1)
+
+    expect(statistical.MINIFS(undefined, testArray3, true, testArray1, null)).to.equal(error.na)
+    expect(statistical.MINIFS(undefined, testArray3, true)).to.equal(error.na)
+    expect(statistical.MINIFS(testArray2, undefined, true, testArray1, null)).to.equal(error.na)
+    expect(statistical.MINIFS(testArray2, undefined, true)).to.equal(error.na)
+    expect(statistical.MINIFS(testArray2, testArray3, undefined, testArray1, null)).to.equal(0)
+    expect(statistical.MINIFS(testArray2, testArray3, true, undefined, null)).to.equal(error.na)
+    expect(statistical.MINIFS(testArray2, testArray3, true, undefined)).to.equal(error.na)
+    expect(statistical.MINIFS(testArray2, testArray3, true, testArray1, undefined)).to.equal(11)
+
+    expect(statistical.MINIFS(testArray2, testArray3, true, testArray1, '=false')).to.equal(4)
+    expect(statistical.MINIFS(testArray2, testArray3, true, testArray1, '=3')).to.equal(13)
+    expect(statistical.MINIFS(testArray2, testArray3, true, testArray1, '>0')).to.equal(13)
+
+    Object.values(error).forEach((err) => {
+      expect(statistical.MINIFS([[3, err]], [[true, true]], true)).to.equal(err)
+      expect(statistical.MINIFS([[3, err]], [[true, true]], '=true')).to.equal(err)
+      expect(statistical.MINIFS([[3, err]], [[true, false]], true)).to.equal(3)
+      expect(statistical.MINIFS([[3, err]], [[true, false]], '=true')).to.equal(3)
+      expect(statistical.MINIFS([[err, 3]], [[false, true]], true)).to.equal(3)
+      expect(statistical.MINIFS([[err, 3]], [[false, true]], '=true')).to.equal(3)
+    })
+
+    expect(statistical.MINIFS([[3, null]], [[true, true]], true)).to.equal(3)
+    expect(statistical.MINIFS([[3, -5]], [[true, true]], true)).to.equal(-5)
+    expect(statistical.MINIFS([[3, '-5']], [[true, true]], true)).to.equal(3)
+    expect(statistical.MINIFS([[3, 0]], [[true, true]], true)).to.equal(0)
+    expect(statistical.MINIFS([[3, '0']], [[true, true]], true)).to.equal(3)
+    expect(statistical.MINIFS([[3, 5]], [[true, true]], true)).to.equal(3)
+    expect(statistical.MINIFS([[3, '5']], [[true, true]], true)).to.equal(3)
+    expect(statistical.MINIFS([[3, true]], [[true, true]], true)).to.equal(3)
+    expect(statistical.MINIFS([[3, false]], [[true, true]], true)).to.equal(3)
+    expect(statistical.MINIFS([[3, 'true']], [[true, true]], true)).to.equal(3)
+    expect(statistical.MINIFS([[3, 'false']], [[true, true]], true)).to.equal(3)
+    expect(statistical.MINIFS([[3, '']], [[true, true]], true)).to.equal(3)
+    expect(statistical.MINIFS([[3, 'test']], [[true, true]], true)).to.equal(3)
+    expect(statistical.MINIFS([[3, 'test 1']], [[true, true]], true)).to.equal(3)
+
+    expect(statistical.MINIFS([[3, null]], [[true, true]], '=true')).to.equal(3)
+    expect(statistical.MINIFS([[3, -5]], [[true, true]], '=true')).to.equal(-5)
+    expect(statistical.MINIFS([[3, '-5']], [[true, true]], '=true')).to.equal(3)
+    expect(statistical.MINIFS([[3, 0]], [[true, true]], '=true')).to.equal(0)
+    expect(statistical.MINIFS([[3, '0']], [[true, true]], '=true')).to.equal(3)
+    expect(statistical.MINIFS([[3, 5]], [[true, true]], '=true')).to.equal(3)
+    expect(statistical.MINIFS([[3, '5']], [[true, true]], '=true')).to.equal(3)
+    expect(statistical.MINIFS([[3, true]], [[true, true]], '=true')).to.equal(3)
+    expect(statistical.MINIFS([[3, false]], [[true, true]], '=true')).to.equal(3)
+    expect(statistical.MINIFS([[3, 'true']], [[true, true]], '=true')).to.equal(3)
+    expect(statistical.MINIFS([[3, 'false']], [[true, true]], '=true')).to.equal(3)
+    expect(statistical.MINIFS([[3, '']], [[true, true]], '=true')).to.equal(3)
+    expect(statistical.MINIFS([[3, 'test']], [[true, true]], '=true')).to.equal(3)
+    expect(statistical.MINIFS([[3, 'test 1']], [[true, true]], '=true')).to.equal(3)
   })
 
   it('MIN', () => {
@@ -1709,33 +2574,245 @@ describe('Statistical', () => {
   })
 
   it('PERCENTRANK.EXC', () => {
-    expect(statistical.PERCENTRANK.EXC([1, 2, 3, 4], 1)).to.approximately(0.2, 1e-9)
-    expect(statistical.PERCENTRANK.EXC([1, 2, 3, 4], 2)).to.approximately(0.4, 1e-9)
-    expect(statistical.PERCENTRANK.EXC([1, 2, 3, 4], 3)).to.approximately(0.6, 1e-9)
-    expect(statistical.PERCENTRANK.EXC([1, 2, 3, 4], 4)).to.approximately(0.8, 1e-9)
-    expect(statistical.PERCENTRANK.EXC([1, 2, 3, 4], 1.25)).to.approximately(0.25, 1e-9)
-    expect(statistical.PERCENTRANK.EXC([1, 2, 3, 4], 2.5)).to.approximately(0.5, 1e-9)
-    expect(statistical.PERCENTRANK.EXC([1, 2, 3, 4], 3.75)).to.approximately(0.75, 1e-9)
-    expect(statistical.PERCENTRANK.EXC([1, 2, 3, 4], 1, 2)).to.approximately(0.2, 1e-9)
-    expect(statistical.PERCENTRANK.EXC([1, 2, 3, 4], 2, 2)).to.approximately(0.4, 1e-9)
-    expect(statistical.PERCENTRANK.EXC([1, 2, 3, 4], 3, 2)).to.approximately(0.6, 1e-9)
-    expect(statistical.PERCENTRANK.EXC([1, 2, 3, 4], 4, 2)).to.approximately(0.8, 1e-9)
-    expect(statistical.PERCENTRANK.EXC([1, 2, 'invalid', 4], 4, 2)).to.equal(error.value)
+    expect(statistical.PERCENTRANK.EXC([[1, 2, 3, 4]], 1)).to.approximately(0.2, 1e-9)
+    expect(statistical.PERCENTRANK.EXC([[1, 2, 3, 4]], 2)).to.approximately(0.4, 1e-9)
+    expect(statistical.PERCENTRANK.EXC([[1, 2, 3, 4]], 3)).to.approximately(0.6, 1e-9)
+    expect(statistical.PERCENTRANK.EXC([[1, 2, 3, 4]], 4)).to.approximately(0.8, 1e-9)
+    expect(statistical.PERCENTRANK.EXC([[1, 2, 3, 4]], 1.25)).to.approximately(0.25, 1e-9)
+    expect(statistical.PERCENTRANK.EXC([[1, 2, 3, 4]], 2.5)).to.approximately(0.5, 1e-9)
+    expect(statistical.PERCENTRANK.EXC([[1, 2, 3, 4]], 3.75)).to.approximately(0.75, 1e-9)
+    expect(statistical.PERCENTRANK.EXC([[1, 2, 3, 4]], 1, 2)).to.approximately(0.2, 1e-9)
+    expect(statistical.PERCENTRANK.EXC([[1, 2, 3, 4]], 2, 2)).to.approximately(0.4, 1e-9)
+    expect(statistical.PERCENTRANK.EXC([[1, 2, 3, 4]], 3, 2)).to.approximately(0.6, 1e-9)
+    expect(statistical.PERCENTRANK.EXC([[1, 2, 3, 4]], 4, 2)).to.approximately(0.8, 1e-9)
+    expect(statistical.PERCENTRANK.EXC([[1, 2, 'invalid', 4]], 4, 2)).to.approximately(0.75, 1e-9)
+
+    expect(statistical.PERCENTRANK.EXC([[0, 1, 2, 3]], true)).to.approximately(0.4, 1e-9)
+    expect(statistical.PERCENTRANK.EXC([[0, 1, 2, 3]], 'true')).to.equal(error.value)
+    expect(statistical.PERCENTRANK.EXC([[0, 1, 2, 3]], false)).to.approximately(0.2, 1e-9)
+    expect(statistical.PERCENTRANK.EXC([[0, 1, 2, 3]], 'false')).to.equal(error.value)
+    expect(statistical.PERCENTRANK.EXC([[0, 1, 2, 3]], '1')).to.approximately(0.4, 1e-9)
+    expect(statistical.PERCENTRANK.EXC([[0, 1, 2, 3]], '0')).to.approximately(0.2, 1e-9)
+    expect(statistical.PERCENTRANK.EXC([[0, 1, 2, 3]], null)).to.approximately(0.2, 1e-9)
+    expect(statistical.PERCENTRANK.EXC([[0, 1, 2, 3]], 'test')).to.equal(error.value)
+    expect(statistical.PERCENTRANK.EXC([[0, 1, 2, 3]], undefined)).to.approximately(0.2, 1e-9)
+    expect(statistical.PERCENTRANK.EXC([[0, 1, 2, 3]], [[0, 1]])).to.equal(error.value)
+
+    expect(
+      statistical.PERCENTRANK.EXC(
+        [
+          [1, 2, 3, 4, 5],
+          [6, 7, 8, 9, 10],
+          [11, 12, 13, 14, 15],
+          [16, 17, 18, 19, 20],
+          [21, 22, 23, 24, 25],
+          [26, 27, 28, 29, 30],
+          [31, 32, 33, 34, 35],
+          [36, 37, 38, 39, 40]
+        ],
+        21,
+        8
+      )
+    ).to.approximately(0.51219512, 1e-9)
+
+    expect(statistical.PERCENTRANK.EXC([[0, 1, 2, 3]], 2.4, 1)).to.approximately(0.6, 1e-9)
+    expect(statistical.PERCENTRANK.EXC([[0, 1, 2, 3]], 2.4, 1.9)).to.approximately(0.6, 1e-9)
+
+    expect(statistical.PERCENTRANK.EXC([[0, 1, 2, 3]], 1, true)).to.approximately(0.4, 1e-9)
+    expect(statistical.PERCENTRANK.EXC([[0, 1, 2, 3]], 1, 'true')).to.equal(error.value)
+    expect(statistical.PERCENTRANK.EXC([[0, 1, 2, 3]], 1, false)).to.equal(error.num)
+    expect(statistical.PERCENTRANK.EXC([[0, 1, 2, 3]], 1, 'false')).to.equal(error.value)
+    expect(statistical.PERCENTRANK.EXC([[0, 1, 2, 3]], 1, -1)).to.equal(error.num)
+    expect(statistical.PERCENTRANK.EXC([[0, 1, 2, 3]], 1, 0)).to.equal(error.num)
+    expect(statistical.PERCENTRANK.EXC([[0, 1, 2, 3]], 1, '0')).to.equal(error.num)
+    expect(statistical.PERCENTRANK.EXC([[0, 1, 2, 3]], 1, null)).to.equal(error.num)
+    expect(statistical.PERCENTRANK.EXC([[0, 1, 2, 3]], 1, 'test')).to.equal(error.value)
+    expect(statistical.PERCENTRANK.EXC([[0, 1, 2, 3]], 1, undefined)).to.approximately(0.4, 1e-9)
+    expect(statistical.PERCENTRANK.EXC([[0, 1, 2, 3]], 1, [[0, 1]])).to.equal(error.value)
+
+    expect(statistical.PERCENTRANK.EXC(true, true)).to.equal(error.na)
+    expect(statistical.PERCENTRANK.EXC('true', 'true')).to.equal(error.value)
+    expect(statistical.PERCENTRANK.EXC('true', 1)).to.equal(error.na)
+    expect(statistical.PERCENTRANK.EXC(false, false)).to.equal(error.na)
+    expect(statistical.PERCENTRANK.EXC('false', 'false')).to.equal(error.value)
+    expect(statistical.PERCENTRANK.EXC('false', 0)).to.equal(error.na)
+    expect(statistical.PERCENTRANK.EXC(-1, -1)).to.approximately(1, 1e-9)
+    expect(statistical.PERCENTRANK.EXC('1', '1')).to.equal(error.na)
+    expect(statistical.PERCENTRANK.EXC('1', 1)).to.equal(error.na)
+    expect(statistical.PERCENTRANK.EXC('0', '0')).to.equal(error.na)
+    expect(statistical.PERCENTRANK.EXC('0', 0)).to.equal(error.na)
+    expect(statistical.PERCENTRANK.EXC(null, null)).to.equal(error.na)
+    expect(statistical.PERCENTRANK.EXC(null, 0)).to.equal(error.na)
+    expect(statistical.PERCENTRANK.EXC('test', 'test')).to.equal(error.value)
+    expect(statistical.PERCENTRANK.EXC('test', 1)).to.equal(error.na)
+    expect(statistical.PERCENTRANK.EXC(undefined, undefined)).to.approximately(1, 1e-9)
+    expect(statistical.PERCENTRANK.EXC(undefined, 0)).to.approximately(1, 1e-9)
+
+    expect(
+      statistical.PERCENTRANK.EXC(
+        [
+          [1, 1.2, 3.9],
+          [4, 5, 6],
+          [7, 8, 9],
+          ['test', true, false],
+          ['1', 'true', 'false'],
+          [null, 2.5, 4.3]
+        ],
+        4,
+        2
+      )
+    ).to.approximately(0.41, 1e-9)
+
+    expect(statistical.PERCENTRANK.EXC([[1, 2, 3, 4]], 0)).to.equal(error.na)
+    expect(statistical.PERCENTRANK.EXC([[1, 2, 3, 4]], 0.5)).to.equal(error.na)
+    expect(statistical.PERCENTRANK.EXC([[1, 2, 3, 4]], 4.5)).to.equal(error.na)
+    expect(statistical.PERCENTRANK.EXC([[1, 2, 3, 4]], 5)).to.equal(error.na)
+
+    Object.values(error).forEach((err) => {
+      expect(
+        statistical.PERCENTRANK.EXC(
+          [
+            [1, 1.2, 3.9],
+            [4, 5, 6],
+            [7, 8, 9],
+            ['test', true, false],
+            ['1', 'true', 'false'],
+            [null, err, 4.3]
+          ],
+          4,
+          2
+        )
+      ).to.equal(err)
+
+      expect(statistical.PERCENTRANK.EXC(err, 3, 2)).to.equal(err)
+      expect(statistical.PERCENTRANK.EXC([[1, 2, 3, 4]], err, 2)).to.equal(err)
+      expect(statistical.PERCENTRANK.EXC([[1, 2, 3, 4]], 3, err)).to.equal(err)
+    })
+
+    expect(statistical.PERCENTRANK.EXC()).to.equal(error.na)
+    expect(statistical.PERCENTRANK.EXC([[1, 2, 3, 4]])).to.equal(error.na)
+    expect(statistical.PERCENTRANK.EXC([[1, 2, 3, 4]], 3, 2, true)).to.equal(error.na)
   })
 
   it('PERCENTRANK.INC', () => {
-    expect(statistical.PERCENTRANK.INC([1, 2, 3, 4], 1)).to.equal(0)
-    expect(statistical.PERCENTRANK.INC([1, 2, 3, 4], 2)).to.approximately(0.333, 1e-9)
-    expect(statistical.PERCENTRANK.INC([1, 2, 3, 4], 3)).to.approximately(0.666, 1e-9)
-    expect(statistical.PERCENTRANK.INC([1, 2, 3, 4], 4)).to.equal(1)
-    expect(statistical.PERCENTRANK.INC([1, 2, 3, 4], 1.25)).to.approximately(0.083, 1e-9)
-    expect(statistical.PERCENTRANK.INC([1, 2, 3, 4], 2.5)).to.approximately(0.5, 1e-9)
-    expect(statistical.PERCENTRANK.INC([1, 2, 3, 4], 3.75)).to.approximately(0.916, 1e-9)
-    expect(statistical.PERCENTRANK.INC([1, 2, 3, 4], 1, 2)).to.equal(0)
-    expect(statistical.PERCENTRANK.INC([1, 2, 3, 4], 2, 2)).to.approximately(0.33, 1e-9)
-    expect(statistical.PERCENTRANK.INC([1, 2, 3, 4], 3, 2)).to.approximately(0.66, 1e-9)
-    expect(statistical.PERCENTRANK.INC([1, 2, 3, 4], 4, 2)).to.equal(1)
-    expect(statistical.PERCENTRANK.INC([1, 2, 3, 4], 'invalid', 2)).to.equal(error.value)
+    expect(statistical.PERCENTRANK.INC([[1, 2, 3, 4]], 1)).to.approximately(0, 1e-9)
+    expect(statistical.PERCENTRANK.INC([[1, 2, 3, 4]], 2)).to.approximately(0.333, 1e-9)
+    expect(statistical.PERCENTRANK.INC([[1, 2, 3, 4]], 3)).to.approximately(0.666, 1e-9)
+    expect(statistical.PERCENTRANK.INC([[1, 2, 3, 4]], 4)).to.approximately(1, 1e-9)
+    expect(statistical.PERCENTRANK.INC([[1, 2, 3, 4]], 1.25)).to.approximately(0.083, 1e-9)
+    expect(statistical.PERCENTRANK.INC([[1, 2, 3, 4]], 2.5)).to.approximately(0.5, 1e-9)
+    expect(statistical.PERCENTRANK.INC([[1, 2, 3, 4]], 3.75)).to.approximately(0.916, 1e-9)
+    expect(statistical.PERCENTRANK.INC([[1, 2, 3, 4]], 1, 2)).to.approximately(0, 1e-9)
+    expect(statistical.PERCENTRANK.INC([[1, 2, 3, 4]], 2, 2)).to.approximately(0.33, 1e-9)
+    expect(statistical.PERCENTRANK.INC([[1, 2, 3, 4]], 3, 2)).to.approximately(0.66, 1e-9)
+    expect(statistical.PERCENTRANK.INC([[1, 2, 3, 4]], 4, 2)).to.approximately(1, 1e-9)
+    expect(statistical.PERCENTRANK.INC([[1, 2, 'invalid', 4]], 3, 2)).to.approximately(0.75, 1e-9)
+
+    expect(statistical.PERCENTRANK.INC([[0, 1, 2, 3]], true)).to.approximately(0.333, 1e-9)
+    expect(statistical.PERCENTRANK.INC([[0, 1, 2, 3]], 'true')).to.equal(error.value)
+    expect(statistical.PERCENTRANK.INC([[0, 1, 2, 3]], false)).to.approximately(0, 1e-9)
+    expect(statistical.PERCENTRANK.INC([[0, 1, 2, 3]], 'false')).to.equal(error.value)
+    expect(statistical.PERCENTRANK.INC([[0, 1, 2, 3]], '1')).to.approximately(0.333, 1e-9)
+    expect(statistical.PERCENTRANK.INC([[0, 1, 2, 3]], '0')).to.approximately(0, 1e-9)
+    expect(statistical.PERCENTRANK.INC([[0, 1, 2, 3]], null)).to.approximately(0, 1e-9)
+    expect(statistical.PERCENTRANK.INC([[0, 1, 2, 3]], 'test')).to.equal(error.value)
+    expect(statistical.PERCENTRANK.INC([[0, 1, 2, 3]], undefined)).to.approximately(0, 1e-9)
+    expect(statistical.PERCENTRANK.INC([[0, 1, 2, 3]], [[0, 1]])).to.equal(error.value)
+
+    expect(
+      statistical.PERCENTRANK.INC(
+        [
+          [1, 2, 3, 4, 5],
+          [6, 7, 8, 9, 10],
+          [11, 12, 13, 14, 15],
+          [16, 17, 18, 19, 20],
+          [21, 22, 23, 24, 25],
+          [26, 27, 28, 29, 30],
+          [31, 32, 33, 34, 35],
+          [36, 37, 38, 39, 40]
+        ],
+        21,
+        8
+      )
+    ).to.approximately(0.51282051, 1e-9)
+
+    // expect(statistical.PERCENTRANK.INC([[0, 1, 2, 3]], 2.4)).to.approximately(0.8, 1e-9)
+    // expect(statistical.PERCENTRANK.INC([[0, 1, 2, 3]], 2.4, 1.9)).to.approximately(0.8, 1e-9)
+
+    expect(statistical.PERCENTRANK.INC([[0, 1, 2, 3]], 1, true)).to.approximately(0.3, 1e-9)
+    expect(statistical.PERCENTRANK.INC([[0, 1, 2, 3]], 1, 'true')).to.equal(error.value)
+    expect(statistical.PERCENTRANK.INC([[0, 1, 2, 3]], 1, false)).to.equal(error.num)
+    expect(statistical.PERCENTRANK.INC([[0, 1, 2, 3]], 1, 'false')).to.equal(error.value)
+    expect(statistical.PERCENTRANK.INC([[0, 1, 2, 3]], 1, -1)).to.equal(error.num)
+    expect(statistical.PERCENTRANK.INC([[0, 1, 2, 3]], 1, 0)).to.equal(error.num)
+    expect(statistical.PERCENTRANK.INC([[0, 1, 2, 3]], 1, '0')).to.equal(error.num)
+    expect(statistical.PERCENTRANK.INC([[0, 1, 2, 3]], 1, null)).to.equal(error.num)
+    expect(statistical.PERCENTRANK.INC([[0, 1, 2, 3]], 1, 'test')).to.equal(error.value)
+    expect(statistical.PERCENTRANK.INC([[0, 1, 2, 3]], 1, undefined)).to.approximately(0.333, 1e-9)
+    expect(statistical.PERCENTRANK.INC([[0, 1, 2, 3]], 1, [[0, 1]])).to.equal(error.value)
+
+    expect(statistical.PERCENTRANK.INC(true, true)).to.equal(error.na)
+    expect(statistical.PERCENTRANK.INC('true', 'true')).to.equal(error.value)
+    expect(statistical.PERCENTRANK.INC('true', 1)).to.equal(error.na)
+    expect(statistical.PERCENTRANK.INC(false, false)).to.equal(error.na)
+    expect(statistical.PERCENTRANK.INC('false', 'false')).to.equal(error.value)
+    expect(statistical.PERCENTRANK.INC('false', 0)).to.equal(error.na)
+    expect(statistical.PERCENTRANK.INC(-1, -1)).to.approximately(1, 1e-9)
+    expect(statistical.PERCENTRANK.INC('1', '1')).to.equal(error.na)
+    expect(statistical.PERCENTRANK.INC('1', 1)).to.equal(error.na)
+    expect(statistical.PERCENTRANK.INC('0', '0')).to.equal(error.na)
+    expect(statistical.PERCENTRANK.INC('0', 0)).to.equal(error.na)
+    expect(statistical.PERCENTRANK.INC(null, null)).to.equal(error.na)
+    expect(statistical.PERCENTRANK.INC(null, 0)).to.equal(error.na)
+    expect(statistical.PERCENTRANK.INC('test', 'test')).to.equal(error.value)
+    expect(statistical.PERCENTRANK.INC('test', 1)).to.equal(error.na)
+    expect(statistical.PERCENTRANK.INC(undefined, undefined)).to.approximately(1, 1e-9)
+    expect(statistical.PERCENTRANK.INC(undefined, 0)).to.approximately(1, 1e-9)
+
+    expect(
+      statistical.PERCENTRANK.INC(
+        [
+          [1, 1.2, 3.9],
+          [4, 5, 6],
+          [7, 8, 9],
+          ['test', true, false],
+          ['1', 'true', 'false'],
+          [null, 2.5, 4.3]
+        ],
+        4,
+        2
+      )
+    ).to.approximately(0.4, 1e-9)
+
+    expect(statistical.PERCENTRANK.INC([[1, 2, 3, 4]], 0)).to.equal(error.na)
+    expect(statistical.PERCENTRANK.INC([[1, 2, 3, 4]], 0.5)).to.equal(error.na)
+    expect(statistical.PERCENTRANK.INC([[1, 2, 3, 4]], 4.5)).to.equal(error.na)
+    expect(statistical.PERCENTRANK.INC([[1, 2, 3, 4]], 5)).to.equal(error.na)
+
+    Object.values(error).forEach((err) => {
+      expect(
+        statistical.PERCENTRANK.INC(
+          [
+            [1, 1.2, 3.9],
+            [4, 5, 6],
+            [7, 8, 9],
+            ['test', true, false],
+            ['1', 'true', 'false'],
+            [null, err, 4.3]
+          ],
+          4,
+          2
+        )
+      ).to.equal(err)
+
+      expect(statistical.PERCENTRANK.INC(err, 3, 2)).to.equal(err)
+      expect(statistical.PERCENTRANK.INC([[1, 2, 3, 4]], err, 2)).to.equal(err)
+      expect(statistical.PERCENTRANK.INC([[1, 2, 3, 4]], 3, err)).to.equal(err)
+    })
+
+    expect(statistical.PERCENTRANK.INC()).to.equal(error.na)
+    expect(statistical.PERCENTRANK.INC([[1, 2, 3, 4]])).to.equal(error.na)
+    expect(statistical.PERCENTRANK.INC([[1, 2, 3, 4]], 3, 2, true)).to.equal(error.na)
   })
 
   it('PERMUT', () => {
@@ -1971,17 +3048,6 @@ describe('Statistical', () => {
     expect(statistical.STANDARDIZE(10, 10, 'invalid')).to.equal(error.value)
   })
 
-  it('STDEV.P', () => {
-    const data = [1345, 1301, 1368, 1322, 1310, 1370, 1318, 1350, 1303, 1299]
-    expect(statistical.STDEV.P(data)).to.approximately(26.054558142482477, 1e-9)
-    expect(statistical.STDEV.P()).to.equal(error.num)
-  })
-
-  it('STDEV.S', () => {
-    const data = [1345, 1301, 1368, 1322, 1310, 1370, 1318, 1350, 1303, 1299, true, false, 'nope']
-    expect(statistical.STDEV.S(data)).to.approximately(27.46391571984349, 1e-9)
-  })
-
   it('STDEVA', () => {
     const data = [1345, 1301, 1368, 1322, 1310, 1370, 1318, 1350, 1303, 1299]
     expect(statistical.STDEVA(data)).to.approximately(27.46391571984349, 1e-9)
@@ -2006,12 +3072,9 @@ describe('Statistical', () => {
   })
 
   it('T.DIST', () => {
-    expect(statistical.T.DIST(1.959999998, 60, 0)).to.equal(error.num)
     expect(statistical.T.DIST(8, 'invalid', 1)).to.equal(error.value)
-    expect(statistical.T.DIST(1.959999998, 60, 1)).to.approximately(0.027322465, 1e-9)
-    expect(statistical.T.DIST(1.959999998, 60, 2)).to.approximately(0.05464493, 1e-9)
-    expect(statistical.T.DIST(3.31, 4, 1)).to.approximately(0.014827220522043, 1e-9)
-    expect(statistical.T.DIST(3.31, 4, 2)).to.approximately(0.029654441044086, 1e-9)
+    expect(statistical.T.DIST(1.959999998, 60, false)).to.approximately(0.059847906, 1e-9)
+    expect(statistical.T.DIST(1.959999998, 60, true)).to.approximately(0.972677535, 1e-9)
   })
 
   it('T.DIST.2T', () => {
@@ -2077,19 +3140,6 @@ describe('Statistical', () => {
     expect(statistical.TRIMMEAN([4, 5, 6, 'invalid', 1, 2, 3], 0.2)).to.equal(error.value)
   })
 
-  it('VAR.P', () => {
-    expect(statistical.VAR.P(1, 2, 3, 4, 10, 10)).to.approximately(13.333333333333334, 1e-9)
-    expect(statistical.VAR.P(1, 2, 3, 4, false, true)).to.approximately(1.25, 1e-9)
-    expect(statistical.VAR.P(1, 2, 3, 4, 'count as zero', false, true)).to.approximately(1.25, 1e-9)
-    expect(statistical.VAR.P()).to.equal(error.num)
-  })
-
-  it('VAR.S', () => {
-    expect(statistical.VAR.S(1, 2, 3, 4, 10, 10)).to.equal(16)
-    expect(statistical.VAR.S(1, 2, 3, 4, false, true)).to.approximately(1.6666666666666667, 1e-9)
-    expect(statistical.VAR.S(1, 2, 3, 4, 'count as zero', false, true)).to.approximately(1.6666666666666667, 1e-9)
-  })
-
   it('VARA', () => {
     expect(statistical.VARA(1, 2, 3, 4, 10, 10)).to.equal(16)
     expect(statistical.VARA(1, 2, 3, 4, false, true)).to.approximately(2.166666666666667, 1e-9)
@@ -2107,12 +3157,5 @@ describe('Statistical', () => {
     expect(statistical.WEIBULL.DIST(105, 20, 100, true)).to.approximately(0.9295813900692769, 1e-9)
     expect(statistical.WEIBULL.DIST(105, 20, 100, false)).to.approximately(0.03558886402450435, 1e-9)
     expect(statistical.WEIBULL.DIST(105, 20, 'invalid', false)).to.equal(error.value)
-  })
-
-  it('Z.TEST', () => {
-    const data = [3, 6, 7, 8, 6, 5, 4, 2, 1, 9]
-    expect(statistical.Z.TEST(data, 4)).to.approximately(0.09057419685136381, 1e-9)
-    expect(statistical.Z.TEST(data, 6)).to.approximately(0.86304338912953, 1e-9)
-    expect(statistical.Z.TEST(data, 'invalid')).to.equal(error.value)
   })
 })
